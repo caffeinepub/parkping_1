@@ -89,16 +89,33 @@ export class ExternalBlob {
         return this;
     }
 }
+export type VehicleId = bigint;
+export type Time = bigint;
+export type MessageId = bigint;
+export interface UserSummary {
+    principal: Principal;
+    name?: string;
+    vehicleCount: bigint;
+}
+export interface AdminStats {
+    totalVehicles: bigint;
+    totalMessages: bigint;
+    totalUsers: bigint;
+}
 export interface Message {
     id: MessageId;
     isRead: boolean;
+    sender?: Principal;
     message: string;
     timestamp: Time;
     senderName?: string;
     vehicleId: VehicleId;
 }
-export type VehicleId = bigint;
-export type Time = bigint;
+export interface MessageRequest {
+    message: string;
+    senderName?: string;
+    vehicleId: VehicleId;
+}
 export interface Vehicle {
     id: VehicleId;
     licensePlate: string;
@@ -106,7 +123,9 @@ export interface Vehicle {
     name: string;
     description: string;
 }
-export type MessageId = bigint;
+export interface UserProfile {
+    name: string;
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -114,17 +133,29 @@ export enum UserRole {
 }
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
-    addMessage(vehicleId: VehicleId, senderName: string | null, messageText: string): Promise<MessageId>;
+    addMessage(input: MessageRequest): Promise<MessageId>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    deleteMessage(messageId: MessageId): Promise<void>;
+    deleteVehicle(vehicleId: VehicleId): Promise<void>;
+    getAdminStats(): Promise<AdminStats>;
+    getAllMessagesForVehicle(vehicleId: VehicleId): Promise<Array<Message>>;
+    getAllUsers(): Promise<Array<UserSummary>>;
+    getAllVehicles(): Promise<Array<Vehicle>>;
+    getAllVehiclesForUser(user: Principal): Promise<Array<Vehicle>>;
+    getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    getMessagesForVehicle(vehicleId: VehicleId): Promise<Array<Message>>;
     getMyVehicles(): Promise<Array<Vehicle>>;
     getUnreadMessages(): Promise<Array<Message>>;
+    getUnreadMessagesForOwner(owner: Principal): Promise<Array<Message>>;
+    getUnreadMessagesForVehicle(vehicleId: VehicleId): Promise<Array<Message>>;
+    getUserProfile(user: Principal): Promise<UserProfile | null>;
+    getVehicle(vehicleId: VehicleId): Promise<Vehicle | null>;
     isCallerAdmin(): Promise<boolean>;
     markMessageAsRead(messageId: MessageId): Promise<void>;
     registerVehicle(name: string, description: string, licensePlate: string): Promise<VehicleId>;
+    saveCallerUserProfile(name: string): Promise<void>;
 }
-import type { Message as _Message, MessageId as _MessageId, Time as _Time, UserRole as _UserRole, VehicleId as _VehicleId } from "./declarations/backend.did.d.ts";
+import type { Message as _Message, MessageId as _MessageId, MessageRequest as _MessageRequest, Time as _Time, UserProfile as _UserProfile, UserRole as _UserRole, UserSummary as _UserSummary, Vehicle as _Vehicle, VehicleId as _VehicleId } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -141,60 +172,158 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async addMessage(arg0: VehicleId, arg1: string | null, arg2: string): Promise<MessageId> {
+    async addMessage(arg0: MessageRequest): Promise<MessageId> {
         if (this.processError) {
             try {
-                const result = await this.actor.addMessage(arg0, to_candid_opt_n1(this._uploadFile, this._downloadFile, arg1), arg2);
+                const result = await this.actor.addMessage(to_candid_MessageRequest_n1(this._uploadFile, this._downloadFile, arg0));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addMessage(arg0, to_candid_opt_n1(this._uploadFile, this._downloadFile, arg1), arg2);
+            const result = await this.actor.addMessage(to_candid_MessageRequest_n1(this._uploadFile, this._downloadFile, arg0));
             return result;
         }
     }
     async assignCallerUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n2(this._uploadFile, this._downloadFile, arg1));
+                const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n3(this._uploadFile, this._downloadFile, arg1));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n2(this._uploadFile, this._downloadFile, arg1));
+            const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n3(this._uploadFile, this._downloadFile, arg1));
             return result;
+        }
+    }
+    async deleteMessage(arg0: MessageId): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteMessage(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteMessage(arg0);
+            return result;
+        }
+    }
+    async deleteVehicle(arg0: VehicleId): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteVehicle(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteVehicle(arg0);
+            return result;
+        }
+    }
+    async getAdminStats(): Promise<AdminStats> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAdminStats();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAdminStats();
+            return result;
+        }
+    }
+    async getAllMessagesForVehicle(arg0: VehicleId): Promise<Array<Message>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllMessagesForVehicle(arg0);
+                return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllMessagesForVehicle(arg0);
+            return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getAllUsers(): Promise<Array<UserSummary>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllUsers();
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllUsers();
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getAllVehicles(): Promise<Array<Vehicle>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllVehicles();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllVehicles();
+            return result;
+        }
+    }
+    async getAllVehiclesForUser(arg0: Principal): Promise<Array<Vehicle>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllVehiclesForUser(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllVehiclesForUser(arg0);
+            return result;
+        }
+    }
+    async getCallerUserProfile(): Promise<UserProfile | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCallerUserProfile();
+                return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCallerUserProfile();
+            return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n4(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n14(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n4(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getMessagesForVehicle(arg0: VehicleId): Promise<Array<Message>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getMessagesForVehicle(arg0);
-                return from_candid_vec_n6(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getMessagesForVehicle(arg0);
-            return from_candid_vec_n6(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n14(this._uploadFile, this._downloadFile, result);
         }
     }
     async getMyVehicles(): Promise<Array<Vehicle>> {
@@ -215,14 +344,70 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getUnreadMessages();
-                return from_candid_vec_n6(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUnreadMessages();
-            return from_candid_vec_n6(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getUnreadMessagesForOwner(arg0: Principal): Promise<Array<Message>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUnreadMessagesForOwner(arg0);
+                return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUnreadMessagesForOwner(arg0);
+            return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getUnreadMessagesForVehicle(arg0: VehicleId): Promise<Array<Message>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUnreadMessagesForVehicle(arg0);
+                return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUnreadMessagesForVehicle(arg0);
+            return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUserProfile(arg0);
+                return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUserProfile(arg0);
+            return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getVehicle(arg0: VehicleId): Promise<Vehicle | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getVehicle(arg0);
+                return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getVehicle(arg0);
+            return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -267,19 +452,61 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async saveCallerUserProfile(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.saveCallerUserProfile(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.saveCallerUserProfile(arg0);
+            return result;
+        }
+    }
 }
-function from_candid_Message_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Message): Message {
-    return from_candid_record_n8(_uploadFile, _downloadFile, value);
+function from_candid_Message_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Message): Message {
+    return from_candid_record_n7(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserRole_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n5(_uploadFile, _downloadFile, value);
+function from_candid_UserRole_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n15(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserSummary_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserSummary): UserSummary {
+    return from_candid_record_n12(_uploadFile, _downloadFile, value);
+}
+function from_candid_opt_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Vehicle]): Vehicle | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [Principal]): Principal | null {
+    return value.length === 0 ? null : value[0];
 }
 function from_candid_opt_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    principal: Principal;
+    name: [] | [string];
+    vehicleCount: bigint;
+}): {
+    principal: Principal;
+    name?: string;
+    vehicleCount: bigint;
+} {
+    return {
+        principal: value.principal,
+        name: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.name)),
+        vehicleCount: value.vehicleCount
+    };
+}
+function from_candid_record_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: _MessageId;
     isRead: boolean;
+    sender: [] | [Principal];
     message: string;
     timestamp: _Time;
     senderName: [] | [string];
@@ -287,6 +514,7 @@ function from_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint
 }): {
     id: MessageId;
     isRead: boolean;
+    sender?: Principal;
     message: string;
     timestamp: Time;
     senderName?: string;
@@ -295,13 +523,14 @@ function from_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint
     return {
         id: value.id,
         isRead: value.isRead,
+        sender: record_opt_to_undefined(from_candid_opt_n8(_uploadFile, _downloadFile, value.sender)),
         message: value.message,
         timestamp: value.timestamp,
         senderName: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.senderName)),
         vehicleId: value.vehicleId
     };
 }
-function from_candid_variant_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -310,16 +539,34 @@ function from_candid_variant_n5(_uploadFile: (file: ExternalBlob) => Promise<Uin
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_vec_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Message>): Array<Message> {
-    return value.map((x)=>from_candid_Message_n7(_uploadFile, _downloadFile, x));
+function from_candid_vec_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_UserSummary>): Array<UserSummary> {
+    return value.map((x)=>from_candid_UserSummary_n11(_uploadFile, _downloadFile, x));
 }
-function to_candid_UserRole_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
-    return to_candid_variant_n3(_uploadFile, _downloadFile, value);
+function from_candid_vec_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Message>): Array<Message> {
+    return value.map((x)=>from_candid_Message_n6(_uploadFile, _downloadFile, x));
 }
-function to_candid_opt_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
-    return value === null ? candid_none() : candid_some(value);
+function to_candid_MessageRequest_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: MessageRequest): _MessageRequest {
+    return to_candid_record_n2(_uploadFile, _downloadFile, value);
 }
-function to_candid_variant_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
+function to_candid_UserRole_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
+    return to_candid_variant_n4(_uploadFile, _downloadFile, value);
+}
+function to_candid_record_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    message: string;
+    senderName?: string;
+    vehicleId: VehicleId;
+}): {
+    message: string;
+    senderName: [] | [string];
+    vehicleId: _VehicleId;
+} {
+    return {
+        message: value.message,
+        senderName: value.senderName ? candid_some(value.senderName) : candid_none(),
+        vehicleId: value.vehicleId
+    };
+}
+function to_candid_variant_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
     admin: null;
 } | {
     user: null;

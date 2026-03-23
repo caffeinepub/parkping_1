@@ -9,20 +9,36 @@
 import { IDL } from '@icp-sdk/core/candid';
 
 export const VehicleId = IDL.Nat;
+export const MessageRequest = IDL.Record({
+  'message' : IDL.Text,
+  'senderName' : IDL.Opt(IDL.Text),
+  'vehicleId' : VehicleId,
+});
 export const MessageId = IDL.Nat;
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const AdminStats = IDL.Record({
+  'totalVehicles' : IDL.Nat,
+  'totalMessages' : IDL.Nat,
+  'totalUsers' : IDL.Nat,
+});
 export const Time = IDL.Int;
 export const Message = IDL.Record({
   'id' : MessageId,
   'isRead' : IDL.Bool,
+  'sender' : IDL.Opt(IDL.Principal),
   'message' : IDL.Text,
   'timestamp' : Time,
   'senderName' : IDL.Opt(IDL.Text),
   'vehicleId' : VehicleId,
+});
+export const UserSummary = IDL.Record({
+  'principal' : IDL.Principal,
+  'name' : IDL.Opt(IDL.Text),
+  'vehicleCount' : IDL.Nat,
 });
 export const Vehicle = IDL.Record({
   'id' : VehicleId,
@@ -31,46 +47,87 @@ export const Vehicle = IDL.Record({
   'name' : IDL.Text,
   'description' : IDL.Text,
 });
+export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-  'addMessage' : IDL.Func(
-      [VehicleId, IDL.Opt(IDL.Text), IDL.Text],
-      [MessageId],
-      [],
-    ),
+  'addMessage' : IDL.Func([MessageRequest], [MessageId], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-  'getMessagesForVehicle' : IDL.Func(
+  'deleteMessage' : IDL.Func([MessageId], [], []),
+  'deleteVehicle' : IDL.Func([VehicleId], [], []),
+  'getAdminStats' : IDL.Func([], [AdminStats], ['query']),
+  'getAllMessagesForVehicle' : IDL.Func(
       [VehicleId],
       [IDL.Vec(Message)],
       ['query'],
     ),
+  'getAllUsers' : IDL.Func([], [IDL.Vec(UserSummary)], ['query']),
+  'getAllVehicles' : IDL.Func([], [IDL.Vec(Vehicle)], ['query']),
+  'getAllVehiclesForUser' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Vec(Vehicle)],
+      ['query'],
+    ),
+  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+  'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getMyVehicles' : IDL.Func([], [IDL.Vec(Vehicle)], ['query']),
   'getUnreadMessages' : IDL.Func([], [IDL.Vec(Message)], ['query']),
+  'getUnreadMessagesForOwner' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Vec(Message)],
+      ['query'],
+    ),
+  'getUnreadMessagesForVehicle' : IDL.Func(
+      [VehicleId],
+      [IDL.Vec(Message)],
+      ['query'],
+    ),
+  'getUserProfile' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(UserProfile)],
+      ['query'],
+    ),
+  'getVehicle' : IDL.Func([VehicleId], [IDL.Opt(Vehicle)], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'markMessageAsRead' : IDL.Func([MessageId], [], []),
   'registerVehicle' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [VehicleId], []),
+  'saveCallerUserProfile' : IDL.Func([IDL.Text], [], []),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
   const VehicleId = IDL.Nat;
+  const MessageRequest = IDL.Record({
+    'message' : IDL.Text,
+    'senderName' : IDL.Opt(IDL.Text),
+    'vehicleId' : VehicleId,
+  });
   const MessageId = IDL.Nat;
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const AdminStats = IDL.Record({
+    'totalVehicles' : IDL.Nat,
+    'totalMessages' : IDL.Nat,
+    'totalUsers' : IDL.Nat,
+  });
   const Time = IDL.Int;
   const Message = IDL.Record({
     'id' : MessageId,
     'isRead' : IDL.Bool,
+    'sender' : IDL.Opt(IDL.Principal),
     'message' : IDL.Text,
     'timestamp' : Time,
     'senderName' : IDL.Opt(IDL.Text),
     'vehicleId' : VehicleId,
+  });
+  const UserSummary = IDL.Record({
+    'principal' : IDL.Principal,
+    'name' : IDL.Opt(IDL.Text),
+    'vehicleCount' : IDL.Nat,
   });
   const Vehicle = IDL.Record({
     'id' : VehicleId,
@@ -79,23 +136,47 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
     'description' : IDL.Text,
   });
+  const UserProfile = IDL.Record({ 'name' : IDL.Text });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-    'addMessage' : IDL.Func(
-        [VehicleId, IDL.Opt(IDL.Text), IDL.Text],
-        [MessageId],
-        [],
-      ),
+    'addMessage' : IDL.Func([MessageRequest], [MessageId], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-    'getMessagesForVehicle' : IDL.Func(
+    'deleteMessage' : IDL.Func([MessageId], [], []),
+    'deleteVehicle' : IDL.Func([VehicleId], [], []),
+    'getAdminStats' : IDL.Func([], [AdminStats], ['query']),
+    'getAllMessagesForVehicle' : IDL.Func(
         [VehicleId],
         [IDL.Vec(Message)],
         ['query'],
       ),
+    'getAllUsers' : IDL.Func([], [IDL.Vec(UserSummary)], ['query']),
+    'getAllVehicles' : IDL.Func([], [IDL.Vec(Vehicle)], ['query']),
+    'getAllVehiclesForUser' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Vec(Vehicle)],
+        ['query'],
+      ),
+    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+    'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getMyVehicles' : IDL.Func([], [IDL.Vec(Vehicle)], ['query']),
     'getUnreadMessages' : IDL.Func([], [IDL.Vec(Message)], ['query']),
+    'getUnreadMessagesForOwner' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Vec(Message)],
+        ['query'],
+      ),
+    'getUnreadMessagesForVehicle' : IDL.Func(
+        [VehicleId],
+        [IDL.Vec(Message)],
+        ['query'],
+      ),
+    'getUserProfile' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(UserProfile)],
+        ['query'],
+      ),
+    'getVehicle' : IDL.Func([VehicleId], [IDL.Opt(Vehicle)], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'markMessageAsRead' : IDL.Func([MessageId], [], []),
     'registerVehicle' : IDL.Func(
@@ -103,6 +184,7 @@ export const idlFactory = ({ IDL }) => {
         [VehicleId],
         [],
       ),
+    'saveCallerUserProfile' : IDL.Func([IDL.Text], [], []),
   });
 };
 

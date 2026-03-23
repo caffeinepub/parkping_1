@@ -1,26 +1,29 @@
 # ParkPing
 
 ## Current State
-New project — no existing application files.
+- Vehicle registration, QR codes, public messaging, unread tracking, user profiles, and push notifications are all working.
+- Authorization with admin/user/guest roles is in place.
+- No admin portal exists.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Vehicle registration: authenticated owners can register vehicles with a name/description and license plate
-- QR code generation: each registered vehicle gets a unique QR code linking to a public message page
-- Public message page: anyone who scans the QR can leave a message (name optional, message required) — no login needed
-- Owner dashboard: authenticated owners see their registered vehicles and all messages left for each vehicle
-- Mark messages as read/resolved
-- Landing/marketing page explaining the concept
+- Backend: `AdminStats` type with totalUsers, totalVehicles, totalMessages fields; `getAdminStats()` admin-only query.
+- Backend: `getAllUsers()` admin-only query returning list of `{ principal, name }` records.
+- Frontend: `/admin` route — protected admin portal page showing platform stats (total users, vehicles, messages) and a table of registered users with their vehicle counts.
+- Frontend: Navbar shows "Admin" link when the caller is admin.
 
 ### Modify
-- N/A
+- App.tsx: add `/admin` route.
+- Navbar: show Admin link for admins.
 
 ### Remove
-- N/A
+- Nothing.
 
 ## Implementation Plan
-1. Backend: vehicle CRUD for authenticated owners, public message submission endpoint (no auth), message retrieval per vehicle
-2. Frontend: marketing landing page, owner auth + dashboard, vehicle detail page with QR code display, public message-leave page (accessed via QR link)
-3. QR codes rendered in-browser using a QR library pointing to the public message URL
-4. Routing: `/` (landing), `/dashboard` (owner), `/vehicle/:id` (public message page)
+1. Add `AdminStats` record and `getAdminStats()` (admin-only query) to backend.
+2. Add `getAllUsers()` (admin-only query) returning `[{ principal: Principal; name: ?Text; vehicleCount: Nat }]`.
+3. Regenerate bindings.
+4. Add AdminPortal page with stat cards and user table.
+5. Add `/admin` route in App.tsx.
+6. Show Admin nav link in Navbar when `isCallerAdmin` is true.

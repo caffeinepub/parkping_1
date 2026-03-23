@@ -6,9 +6,11 @@ import Map "mo:core/Map";
 import Principal "mo:core/Principal";
 import Iter "mo:core/Iter";
 import Order "mo:core/Order";
+import Migration "migration";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
+(with migration = Migration.run)
 actor {
   // Authorization
   let accessControlState = AccessControl.initState();
@@ -17,6 +19,10 @@ actor {
   // Types
   type VehicleId = Nat;
   type MessageId = Nat;
+
+  type UserProfile = {
+    name : Text;
+  };
 
   type Vehicle = {
     id : VehicleId;
@@ -30,9 +36,34 @@ actor {
     id : MessageId;
     vehicleId : VehicleId;
     senderName : ?Text;
+    sender : ?Principal;
     message : Text;
     timestamp : Time.Time;
     isRead : Bool;
+  };
+
+  type MessageRequest = {
+    vehicleId : VehicleId;
+    senderName : ?Text;
+    message : Text;
+  };
+
+  type AdminStats = {
+    totalUsers : Nat;
+    totalVehicles : Nat;
+    totalMessages : Nat;
+  };
+
+  type UserSummary = {
+    principal : Principal;
+    name : ?Text;
+    vehicleCount : Nat;
+  };
+
+  module Message {
+    public func compare(m1 : Message, m2 : Message) : Order.Order {
+      Nat.compare(m1.id, m2.id);
+    };
   };
 
   module Vehicle {
@@ -46,11 +77,12 @@ actor {
 
   let vehicles = Map.empty<VehicleId, Vehicle>();
   let messages = Map.empty<MessageId, Message>();
+  let userProfiles = Map.empty<Principal, UserProfile>();
 
-  // Vehicle registration
+  // Vehicle registration - users only
   public shared ({ caller }) func registerVehicle(name : Text, description : Text, licensePlate : Text) : async VehicleId {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can register vehicles");
+      Runtime.trap("Unauthorized: Only authenticated users can add vehicles");
     };
     let vehicleId = nextVehicleId;
     let vehicle : Vehicle = {
@@ -65,15 +97,19 @@ actor {
     vehicleId;
   };
 
-  // Add message to vehicle
-  public shared ({ caller }) func addMessage(vehicleId : VehicleId, senderName : ?Text, messageText : Text) : async MessageId {
-    if (not vehicles.containsKey(vehicleId)) { Runtime.trap("Vehicle not found") };
+  // Add message to vehicle (either anonymous or with sender)
+  public shared ({ caller }) func addMessage(input : MessageRequest) : async MessageId {
+    let vehicle = switch (vehicles.get(input.vehicleId)) {
+      case (null) { Runtime.trap("Vehicle not found!") };
+      case (?vehicle) { vehicle };
+    };
     let messageId = nextMessageId;
     let message : Message = {
       id = messageId;
-      vehicleId;
-      senderName;
-      message = messageText;
+      vehicleId = input.vehicleId;
+      senderName = input.senderName;
+      sender = if (caller.isAnonymous()) { null } else { ?caller };
+      message = input.message;
       timestamp = Time.now();
       isRead = false;
     };
@@ -82,7 +118,7 @@ actor {
     messageId;
   };
 
-  // Get vehicles for owner
+  // Get all vehicles for owner
   public query ({ caller }) func getMyVehicles() : async [Vehicle] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Must be a user to own vehicles");
@@ -90,52 +126,77 @@ actor {
     vehicles.values().toArray().filter(func(v) { v.owner == caller }).sort();
   };
 
-  // Get messages for vehicle
-  public query ({ caller }) func getMessagesForVehicle(vehicleId : VehicleId) : async [Message] {
+  // Get specific vehicle - only owner or admin
+  public query ({ caller }) func getVehicle(vehicleId : VehicleId) : async ?Vehicle {
     let vehicle = switch (vehicles.get(vehicleId)) {
-      case (null) { Runtime.trap("Vehicle not found") };
-      case (?v) { v };
+      case (null) { return null };
+      case (?vehicle) { vehicle };
     };
-    if (not (AccessControl.isAdmin(accessControlState, caller) or vehicle.owner == caller)) {
-      Runtime.trap("Unauthorized: Only the vehicle owner or an admin can view messages");
+    if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only the vehicle owner or admin can view this vehicle");
     };
-    messages.values().toArray().filter(func(m) { m.vehicleId == vehicleId });
+    ?vehicle;
+  };
+
+  // Get all messages for vehicle - only owner
+  public query ({ caller }) func getAllMessagesForVehicle(vehicleId : VehicleId) : async [Message] {
+    let vehicle = switch (vehicles.get(vehicleId)) {
+      case (null) { Runtime.trap("Vehicle not found!") };
+      case (?vehicle) { vehicle };
+    };
+    if (vehicle.owner != caller) {
+      Runtime.trap("Unauthorized: Only the vehicle owner can view messages");
+    };
+    messages.values().toArray().filter(func(m) { m.vehicleId == vehicleId }).sort();
+  };
+
+  // Get unread messages for vehicle - only if owner
+  public query ({ caller }) func getUnreadMessagesForVehicle(vehicleId : VehicleId) : async [Message] {
+    let vehicle = switch (vehicles.get(vehicleId)) {
+      case (null) { Runtime.trap("Vehicle not found!") };
+      case (?vehicle) { vehicle };
+    };
+    if (vehicle.owner != caller) {
+      Runtime.trap("Unauthorized: Only the vehicle owner can view unread messages");
+    };
+    messages.values().toArray().filter(
+      func(m) {
+        m.vehicleId == vehicleId and not m.isRead
+      }
+    ).sort();
   };
 
   // Mark message as read
   public shared ({ caller }) func markMessageAsRead(messageId : MessageId) : async () {
     let message = switch (messages.get(messageId)) {
-      case (null) { Runtime.trap("Message not found") };
-      case (?m) { m };
+      case (null) { Runtime.trap("Message not found!") };
+      case (?message) { message };
     };
-
     let vehicle = switch (vehicles.get(message.vehicleId)) {
-      case (null) { Runtime.trap("Vehicle not found") };
-      case (?v) { v };
+      case (null) { Runtime.trap("Vehicle not found!") };
+      case (?vehicle) { vehicle };
     };
-    if (not (AccessControl.isAdmin(accessControlState, caller) or vehicle.owner == caller)) {
-      Runtime.trap("Unauthorized: Only the vehicle owner or an admin can mark messages as read");
+    if (vehicle.owner != caller) {
+      Runtime.trap("Unauthorized: Only the vehicle owner can mark messages as read");
     };
-
     let updatedMessage : Message = {
       id = message.id;
       vehicleId = message.vehicleId;
       senderName = message.senderName;
+      sender = message.sender;
       message = message.message;
       timestamp = message.timestamp;
       isRead = true;
     };
-
     messages.add(messageId, updatedMessage);
   };
 
-  // Get unread messages for owner
+  // Get unread messages for owner across all vehicles
   public query ({ caller }) func getUnreadMessages() : async [Message] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Must be a user to own messages");
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only the vehicle owner can see unread messages");
     };
     let myVehicleIds = vehicles.values().toArray().filter(func(v) { v.owner == caller }).sort().map(func(v) { v.id });
-
     messages.values().toArray().filter(
       func(m) {
         myVehicleIds.any(func(id) { id == m.vehicleId });
@@ -144,6 +205,127 @@ actor {
       func(m) {
         not m.isRead;
       }
+    ).sort();
+  };
+
+  // Get unread messages for all vehicles for a specific user (owners) - only owner or admin
+  public query ({ caller }) func getUnreadMessagesForOwner(owner : Principal) : async [Message] {
+    if (caller != owner and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only view your own unread messages");
+    };
+    let ownerVehicles = vehicles.values().toArray().filter(func(v) { v.owner == owner }).sort().map(func(v) { v.id });
+    messages.values().toArray().filter(
+      func(m) {
+        ownerVehicles.any(func(vid) { vid == m.vehicleId });
+      }
+    ).filter(
+      func(m) {
+        not m.isRead;
+      }
+    ).sort();
+  };
+
+  // Get all vehicles for user - only that user or admin
+  public query ({ caller }) func getAllVehiclesForUser(user : Principal) : async [Vehicle] {
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only view your own vehicles");
+    };
+    vehicles.values().toArray().filter(func(v) { v.owner == user }).sort();
+  };
+
+  // Get all vehicles - admin only
+  public query ({ caller }) func getAllVehicles() : async [Vehicle] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admin can view all vehicles");
+    };
+    vehicles.values().toArray().sort();
+  };
+
+  // Get all messages for vehicle (public) - removed, use getAllMessagesForVehicle with proper authorization
+
+  // Get admin stats
+  public query ({ caller }) func getAdminStats() : async AdminStats {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admin can access stats");
+    };
+    {
+      totalUsers = userProfiles.size();
+      totalVehicles = vehicles.size();
+      totalMessages = messages.size();
+    };
+  };
+
+  // Get all users for admin
+  public query ({ caller }) func getAllUsers() : async [UserSummary] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admin can access user list");
+    };
+    let userProfilesIter = userProfiles.entries();
+    let summariesIter = userProfilesIter.map(
+      func((p, profile)) {
+        let vehicleCount = vehicles.values().toArray().filter(func(v) { v.owner == p }).size();
+        {
+          principal = p;
+          name = ?profile.name;
+          vehicleCount;
+        };
+      }
     );
+    summariesIter.toArray();
+  };
+
+  // Get caller user profile - requires user authentication
+  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can access profiles");
+    };
+    userProfiles.get(caller);
+  };
+
+  // Get specific user profile - only own profile or admin
+  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only view your own profile");
+    };
+    userProfiles.get(user);
+  };
+
+  // Save user profile
+  public shared ({ caller }) func saveCallerUserProfile(name : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can save profiles");
+    };
+    let profile : UserProfile = {
+      name;
+    };
+    userProfiles.add(caller, profile);
+  };
+
+  // Delete vehicle - only owner or admin
+  public shared ({ caller }) func deleteVehicle(vehicleId : VehicleId) : async () {
+    let vehicle = switch (vehicles.get(vehicleId)) {
+      case (null) { Runtime.trap("Vehicle not found!") };
+      case (?vehicle) { vehicle };
+    };
+    if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only the vehicle owner or admin can delete this vehicle");
+    };
+    vehicles.remove(vehicleId);
+  };
+
+  // Delete message - only vehicle owner or admin
+  public shared ({ caller }) func deleteMessage(messageId : MessageId) : async () {
+    let message = switch (messages.get(messageId)) {
+      case (null) { Runtime.trap("Message not found!") };
+      case (?message) { message };
+    };
+    let vehicle = switch (vehicles.get(message.vehicleId)) {
+      case (null) { Runtime.trap("Vehicle not found!") };
+      case (?vehicle) { vehicle };
+    };
+    if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only the vehicle owner or admin can delete messages");
+    };
+    messages.remove(messageId);
   };
 };

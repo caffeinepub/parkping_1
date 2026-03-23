@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/sonner";
+import AdminPortal from "@/pages/AdminPortal";
 import Dashboard from "@/pages/Dashboard";
 import LandingPage from "@/pages/LandingPage";
 import PublicMessagePage from "@/pages/PublicMessagePage";
@@ -10,9 +11,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  redirect,
 } from "@tanstack/react-router";
-import { useInternetIdentity } from "./hooks/useInternetIdentity";
 
 const queryClient = new QueryClient();
 
@@ -44,11 +43,18 @@ const publicMessageRoute = createRoute({
   component: PublicMessagePage,
 });
 
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  component: AdminPortal,
+});
+
 const routeTree = rootRoute.addChildren([
   landingRoute,
   dashboardRoute,
   vehicleMessagesRoute,
   publicMessageRoute,
+  adminRoute,
 ]);
 
 const router = createRouter({ routeTree });

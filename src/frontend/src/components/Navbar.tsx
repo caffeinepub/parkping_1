@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { Car, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useIsCallerAdmin } from "../hooks/useQueries";
 
 interface NavbarProps {
   transparent?: boolean;
@@ -13,6 +14,7 @@ export default function Navbar({ transparent = false }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { login, clear, loginStatus, identity } = useInternetIdentity();
   const queryClient = useQueryClient();
+  const { data: isAdmin } = useIsCallerAdmin();
   const isAuthenticated = !!identity;
   const isLoggingIn = loginStatus === "logging-in";
 
@@ -70,6 +72,15 @@ export default function Navbar({ transparent = false }: NavbarProps) {
               data-ocid="nav.link"
             >
               Dashboard
+            </Link>
+          )}
+          {isAuthenticated && isAdmin && (
+            <Link
+              to="/admin"
+              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              data-ocid="nav.link"
+            >
+              Admin
             </Link>
           )}
         </div>
@@ -133,6 +144,16 @@ export default function Navbar({ transparent = false }: NavbarProps) {
               data-ocid="nav.link"
             >
               Dashboard
+            </Link>
+          )}
+          {isAuthenticated && isAdmin && (
+            <Link
+              to="/admin"
+              className="text-sm font-medium text-muted-foreground"
+              onClick={closeMobileMenu}
+              data-ocid="nav.link"
+            >
+              Admin
             </Link>
           )}
           <Button

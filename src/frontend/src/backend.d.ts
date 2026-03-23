@@ -7,16 +7,33 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export type VehicleId = bigint;
+export type Time = bigint;
+export type MessageId = bigint;
+export interface UserSummary {
+    principal: Principal;
+    name?: string;
+    vehicleCount: bigint;
+}
+export interface AdminStats {
+    totalVehicles: bigint;
+    totalMessages: bigint;
+    totalUsers: bigint;
+}
 export interface Message {
     id: MessageId;
     isRead: boolean;
+    sender?: Principal;
     message: string;
     timestamp: Time;
     senderName?: string;
     vehicleId: VehicleId;
 }
-export type VehicleId = bigint;
-export type Time = bigint;
+export interface MessageRequest {
+    message: string;
+    senderName?: string;
+    vehicleId: VehicleId;
+}
 export interface Vehicle {
     id: VehicleId;
     licensePlate: string;
@@ -24,20 +41,34 @@ export interface Vehicle {
     name: string;
     description: string;
 }
-export type MessageId = bigint;
+export interface UserProfile {
+    name: string;
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
     guest = "guest"
 }
 export interface backendInterface {
-    addMessage(vehicleId: VehicleId, senderName: string | null, messageText: string): Promise<MessageId>;
+    addMessage(input: MessageRequest): Promise<MessageId>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    deleteMessage(messageId: MessageId): Promise<void>;
+    deleteVehicle(vehicleId: VehicleId): Promise<void>;
+    getAdminStats(): Promise<AdminStats>;
+    getAllMessagesForVehicle(vehicleId: VehicleId): Promise<Array<Message>>;
+    getAllUsers(): Promise<Array<UserSummary>>;
+    getAllVehicles(): Promise<Array<Vehicle>>;
+    getAllVehiclesForUser(user: Principal): Promise<Array<Vehicle>>;
+    getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    getMessagesForVehicle(vehicleId: VehicleId): Promise<Array<Message>>;
     getMyVehicles(): Promise<Array<Vehicle>>;
     getUnreadMessages(): Promise<Array<Message>>;
+    getUnreadMessagesForOwner(owner: Principal): Promise<Array<Message>>;
+    getUnreadMessagesForVehicle(vehicleId: VehicleId): Promise<Array<Message>>;
+    getUserProfile(user: Principal): Promise<UserProfile | null>;
+    getVehicle(vehicleId: VehicleId): Promise<Vehicle | null>;
     isCallerAdmin(): Promise<boolean>;
     markMessageAsRead(messageId: MessageId): Promise<void>;
     registerVehicle(name: string, description: string, licensePlate: string): Promise<VehicleId>;
+    saveCallerUserProfile(name: string): Promise<void>;
 }

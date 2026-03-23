@@ -11,6 +11,7 @@ import { Car, ChevronRight, LogIn, MessageSquare } from "lucide-react";
 import { motion } from "motion/react";
 import type { Vehicle } from "../backend.d";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 import {
   useGetCallerUserProfile,
   useGetMyVehicles,
@@ -42,6 +43,8 @@ export default function Dashboard() {
     isFetched: profileFetched,
     data: userProfile,
   } = useGetCallerUserProfile();
+
+  usePushNotifications(unreadMessages.length);
 
   const showProfileSetup =
     isAuthenticated &&

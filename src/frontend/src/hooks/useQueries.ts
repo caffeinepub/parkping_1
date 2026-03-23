@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Message, MessageId, Vehicle, VehicleId } from "../backend.d";
+import type {
+  AdminStats,
+  Message,
+  MessageId,
+  UserSummary,
+  Vehicle,
+  VehicleId,
+} from "../backend.d";
 import { useActor } from "./useActor";
 
 export function useGetMyVehicles() {
@@ -20,7 +27,7 @@ export function useGetMessagesForVehicle(vehicleId: VehicleId | null) {
     queryKey: ["messages", vehicleId?.toString()],
     queryFn: async () => {
       if (!actor || vehicleId === null) return [];
-      return actor.getMessagesForVehicle(vehicleId);
+      return actor.getAllMessagesForVehicle(vehicleId);
     },
     enabled: !!actor && !isFetching && vehicleId !== null,
     refetchInterval: 15000,
@@ -46,9 +53,7 @@ export function useGetCallerUserProfile() {
     queryKey: ["currentUserProfile"],
     queryFn: async () => {
       if (!actor) throw new Error("Actor not available");
-      return (actor as any).getCallerUserProfile
-        ? (actor as any).getCallerUserProfile()
-        : null;
+      return actor.getCallerUserProfile();
     },
     enabled: !!actor && !actorFetching,
     retry: false,
@@ -93,7 +98,11 @@ export function useAddMessage() {
       messageText: string;
     }) => {
       if (!actor) throw new Error("Not available");
-      return actor.addMessage(vehicleId, senderName, messageText);
+      return actor.addMessage({
+        vehicleId,
+        senderName: senderName ?? undefined,
+        message: messageText,
+      });
     },
   });
 }
@@ -110,5 +119,41 @@ export function useMarkMessageAsRead() {
       qc.invalidateQueries({ queryKey: ["messages"] });
       qc.invalidateQueries({ queryKey: ["unreadMessages"] });
     },
+  });
+}
+
+export function useIsCallerAdmin() {
+  const { actor, isFetching } = useActor();
+  return useQuery<boolean>({
+    queryKey: ["isCallerAdmin"],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerAdmin();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetAdminStats() {
+  const { actor, isFetching } = useActor();
+  return useQuery<AdminStats>({
+    queryKey: ["adminStats"],
+    queryFn: async () => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.getAdminStats();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetAllUsers() {
+  const { actor, isFetching } = useActor();
+  return useQuery<UserSummary[]>({
+    queryKey: ["allUsers"],
+    queryFn: async () => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.getAllUsers();
+    },
+    enabled: !!actor && !isFetching,
   });
 }

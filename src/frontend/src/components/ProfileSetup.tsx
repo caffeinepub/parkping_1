@@ -27,7 +27,7 @@ export default function ProfileSetup({ open }: ProfileSetupProps) {
     if (!name.trim() || !actor) return;
     setSaving(true);
     try {
-      await (actor as any).saveCallerUserProfile({ name: name.trim() });
+      await actor.saveCallerUserProfile(name.trim());
       qc.invalidateQueries({ queryKey: ["currentUserProfile"] });
       toast.success("Profile saved!");
     } catch {

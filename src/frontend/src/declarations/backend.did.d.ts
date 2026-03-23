@@ -10,19 +10,36 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AdminStats {
+  'totalVehicles' : bigint,
+  'totalMessages' : bigint,
+  'totalUsers' : bigint,
+}
 export interface Message {
   'id' : MessageId,
   'isRead' : boolean,
+  'sender' : [] | [Principal],
   'message' : string,
   'timestamp' : Time,
   'senderName' : [] | [string],
   'vehicleId' : VehicleId,
 }
 export type MessageId = bigint;
+export interface MessageRequest {
+  'message' : string,
+  'senderName' : [] | [string],
+  'vehicleId' : VehicleId,
+}
 export type Time = bigint;
+export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface UserSummary {
+  'principal' : Principal,
+  'name' : [] | [string],
+  'vehicleCount' : bigint,
+}
 export interface Vehicle {
   'id' : VehicleId,
   'licensePlate' : string,
@@ -33,15 +50,27 @@ export interface Vehicle {
 export type VehicleId = bigint;
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'addMessage' : ActorMethod<[VehicleId, [] | [string], string], MessageId>,
+  'addMessage' : ActorMethod<[MessageRequest], MessageId>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'deleteMessage' : ActorMethod<[MessageId], undefined>,
+  'deleteVehicle' : ActorMethod<[VehicleId], undefined>,
+  'getAdminStats' : ActorMethod<[], AdminStats>,
+  'getAllMessagesForVehicle' : ActorMethod<[VehicleId], Array<Message>>,
+  'getAllUsers' : ActorMethod<[], Array<UserSummary>>,
+  'getAllVehicles' : ActorMethod<[], Array<Vehicle>>,
+  'getAllVehiclesForUser' : ActorMethod<[Principal], Array<Vehicle>>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getMessagesForVehicle' : ActorMethod<[VehicleId], Array<Message>>,
   'getMyVehicles' : ActorMethod<[], Array<Vehicle>>,
   'getUnreadMessages' : ActorMethod<[], Array<Message>>,
+  'getUnreadMessagesForOwner' : ActorMethod<[Principal], Array<Message>>,
+  'getUnreadMessagesForVehicle' : ActorMethod<[VehicleId], Array<Message>>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getVehicle' : ActorMethod<[VehicleId], [] | [Vehicle]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'markMessageAsRead' : ActorMethod<[MessageId], undefined>,
   'registerVehicle' : ActorMethod<[string, string, string], VehicleId>,
+  'saveCallerUserProfile' : ActorMethod<[string], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

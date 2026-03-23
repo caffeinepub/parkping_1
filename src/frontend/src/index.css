@@ -1,0 +1,75 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* ParkPing palette — teal + navy */
+    --background: 0.97 0.012 200; /* #F4FAFB light blue-gray */
+    --foreground: 0.2 0.05 230; /* #0E2A3B deep navy */
+    --card: 1 0 0; /* white */
+    --card-foreground: 0.2 0.05 230;
+    --popover: 1 0 0;
+    --popover-foreground: 0.2 0.05 230;
+
+    --primary: 0.64 0.1 190; /* #2AAEA7 teal */
+    --primary-foreground: 1 0 0;
+
+    --secondary: 0.93 0.018 200;
+    --secondary-foreground: 0.27 0.05 230;
+
+    --muted: 0.93 0.012 200;
+    --muted-foreground: 0.47 0.025 220; /* #4F5F6B slate */
+
+    --accent: 0.9 0.04 190;
+    --accent-foreground: 0.2 0.05 230;
+
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 1 0 0;
+
+    --border: 0.88 0.018 200;
+    --input: 0.88 0.018 200;
+    --ring: 0.64 0.1 190;
+
+    --navy: 0.2 0.05 230; /* deep navy for headings */
+    --navy-footer: 0.27 0.05 230; /* #1F3447 footer */
+    --teal-light: 0.9 0.04 190; /* soft mint bg shapes */
+
+    --chart-1: 0.646 0.222 41.116;
+    --chart-2: 0.64 0.1 190;
+    --chart-3: 0.398 0.07 227.392;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+    --sidebar: 1 0 0;
+    --sidebar-foreground: 0.2 0.05 230;
+    --sidebar-primary: 0.64 0.1 190;
+    --sidebar-primary-foreground: 1 0 0;
+    --sidebar-accent: 0.93 0.018 200;
+    --sidebar-accent-foreground: 0.2 0.05 230;
+    --sidebar-border: 0.88 0.018 200;
+    --sidebar-ring: 0.64 0.1 190;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: oklch(var(--navy));
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  }
+}

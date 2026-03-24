@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Car,
   CheckCircle2,
+  CreditCard,
   Loader2,
   MessageSquare,
   Package,
@@ -42,6 +43,10 @@ import {
   useIsCallerAdmin,
   useUpdateStickerStatus,
 } from "../hooks/useQueries";
+import {
+  useIsStripeConfigured,
+  useSetStripeConfiguration,
+} from "../hooks/useStripe";
 
 function truncatePrincipal(principal: string): string {
   if (principal.length <= 14) return principal;
@@ -174,6 +179,120 @@ function MarkShippedDialog({ req }: { req: StickerRequest }) {
   );
 }
 
+function StripeConfigPanel() {
+  const { data: isConfigured, isLoading: checkingConfig } =
+    useIsStripeConfigured();
+  const { mutateAsync: setConfig, isPending } = useSetStripeConfiguration();
+  const [secretKey, setSecretKey] = useState("");
+  const [countries, setCountries] = useState("US,CA,GB,AU");
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!secretKey.trim()) return;
+    try {
+      const countryList = countries
+        .split(",")
+        .map((c) => c.trim().toUpperCase())
+        .filter(Boolean);
+      await setConfig({
+        secretKey: secretKey.trim(),
+        allowedCountries: countryList,
+      });
+      toast.success("Stripe configuration saved!");
+      setSecretKey("");
+    } catch {
+      toast.error("Failed to save Stripe configuration.");
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.24 }}
+    >
+      <Card className="border-border shadow-card">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-teal-light rounded-xl flex items-center justify-center">
+              <CreditCard className="w-5 h-5 text-primary" />
+            </div>
+            <CardTitle className="text-navy">Stripe Configuration</CardTitle>
+          </div>
+          {!checkingConfig && isConfigured && (
+            <Badge
+              className="bg-green-100 text-green-700 border-green-200 gap-1.5"
+              variant="outline"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Configured
+            </Badge>
+          )}
+        </CardHeader>
+        <CardContent>
+          {checkingConfig ? (
+            <div className="space-y-3" data-ocid="admin.loading_state">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <form onSubmit={handleSave} className="space-y-4">
+              {isConfigured && (
+                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2.5 text-sm text-green-700">
+                  ✅ Stripe payments are active. Enter a new key below to
+                  reconfigure.
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="stripe-key">Stripe Secret Key</Label>
+                <Input
+                  id="stripe-key"
+                  type="password"
+                  placeholder="sk_live_..."
+                  value={secretKey}
+                  onChange={(e) => setSecretKey(e.target.value)}
+                  required
+                  data-ocid="admin.input"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="stripe-countries">Allowed Countries</Label>
+                <Input
+                  id="stripe-countries"
+                  placeholder="US,CA,GB,AU"
+                  value={countries}
+                  onChange={(e) => setCountries(e.target.value)}
+                  data-ocid="admin.input"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Comma-separated ISO country codes
+                </p>
+              </div>
+              <Button
+                type="submit"
+                disabled={!secretKey.trim() || isPending}
+                className="bg-primary text-white hover:bg-primary/90"
+                data-ocid="admin.submit_button"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : isConfigured ? (
+                  "Update Configuration"
+                ) : (
+                  "Save Configuration"
+                )}
+              </Button>
+            </form>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
 export default function AdminPortal() {
   const { data: isAdmin, isLoading: adminCheckLoading } = useIsCallerAdmin();
   const { data: stats } = useGetAdminStats();
@@ -282,6 +401,9 @@ export default function AdminPortal() {
               </TabsTrigger>
               <TabsTrigger value="stickers" data-ocid="admin.tab">
                 Sticker Requests
+              </TabsTrigger>
+              <TabsTrigger value="stripe" data-ocid="admin.tab">
+                Stripe
               </TabsTrigger>
             </TabsList>
 
@@ -467,6 +589,10 @@ export default function AdminPortal() {
                   </CardContent>
                 </Card>
               </motion.div>
+            </TabsContent>
+
+            <TabsContent value="stripe">
+              <StripeConfigPanel />
             </TabsContent>
           </Tabs>
         </div>

@@ -2,13 +2,11 @@ import { Car, Github, Linkedin, Twitter } from "lucide-react";
 
 export default function Footer() {
   const year = new Date().getFullYear();
-  const utmLink = `https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`;
 
   return (
     <footer className="bg-navy-footer text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
@@ -51,7 +49,6 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Links */}
           <div>
             <h4 className="font-semibold text-sm mb-4 text-white/90">
               Product
@@ -105,49 +102,11 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 pt-8 border-t border-white/10">
-          {/* ICP Badges */}
-          <div className="flex flex-wrap items-center gap-4 mb-6 justify-center sm:justify-start">
-            <a
-              href="https://internetcomputer.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="opacity-80 hover:opacity-100 transition-opacity"
-              aria-label="Powered by Internet Computer"
-            >
-              <img
-                src="/assets/uploads/image-019d1d78-acd1-7149-b42b-9a2cca616221-1.png"
-                alt="Powered by Internet Computer"
-                className="h-8 w-auto bg-white/10 rounded-md px-2 py-1"
-              />
-            </a>
-            <a
-              href="https://internetcomputer.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="opacity-80 hover:opacity-100 transition-opacity"
-              aria-label="Powered by Internet Computer"
-            >
-              <img
-                src="/assets/uploads/image-019d1d7b-9c40-733e-82e1-7ed8959464d3-2.png"
-                alt="Powered by Internet Computer"
-                className="h-8 w-auto bg-white/10 rounded-md px-2 py-1"
-              />
-            </a>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/40">
+          <div className="flex items-center justify-center text-xs text-white/40">
             <span>
-              © {year} ParkPing. All rights reserved. Powered by ICP
-              decentralized cloud.
+              © {year} ParkPing. All rights reserved. Powered by Internet
+              Computer Protocol (ICP) - Decentralized Blockchain.
             </span>
-            <a
-              href={utmLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-white/70 transition-colors"
-            >
-              Built with ❤️ using caffeine.ai
-            </a>
           </div>
         </div>
       </div>

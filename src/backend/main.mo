@@ -1,20 +1,16 @@
 import Nat "mo:core/Nat";
 import Runtime "mo:core/Runtime";
-import Array "mo:core/Array";
 import Time "mo:core/Time";
 import Map "mo:core/Map";
 import Principal "mo:core/Principal";
-import Iter "mo:core/Iter";
 import Order "mo:core/Order";
-import Migration "migration";
-
 import Text "mo:core/Text";
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+import Stripe "stripe/stripe";
+import OutCall "http-outcalls/outcall";
 
-// Apply migration with-clause
-(with migration = Migration.run)
 actor {
   // Authorization
   let accessControlState = AccessControl.initState();
@@ -27,6 +23,28 @@ actor {
   type UserProfile = {
     name : Text;
     email : Text;
+  };
+
+  type UserProfileDetails = {
+    phone : ?Text;
+    addressLine1 : ?Text;
+    addressLine2 : ?Text;
+    city : ?Text;
+    stateProvince : ?Text;
+    postcode : ?Text;
+    country : ?Text;
+  };
+
+  type UserProfileFull = {
+    name : Text;
+    email : Text;
+    phone : ?Text;
+    addressLine1 : ?Text;
+    addressLine2 : ?Text;
+    city : ?Text;
+    stateProvince : ?Text;
+    postcode : ?Text;
+    country : ?Text;
   };
 
   type Vehicle = {
@@ -111,17 +129,81 @@ actor {
     };
   };
 
-  // State
-  var nextVehicleId : Nat = 0;
-  var nextMessageId : Nat = 0;
-  var nextStickerRequestId : Nat = 0;
+  // Counters and config
+  stable var nextVehicleId : Nat = 0;
+  stable var nextMessageId : Nat = 0;
+  stable var nextStickerRequestId : Nat = 0;
+  stable var stripeSecretKey : Text = "";
+  stable var stripeAllowedCountries : [Text] = ["US", "CA", "GB", "AU"];
 
+  // Stable backing arrays — types are frozen; never change field names or types
+  stable var vehiclesEntries : [(VehicleId, Vehicle)] = [];
+  stable var messagesEntries : [(MessageId, Message)] = [];
+  stable var userProfilesEntries : [(Principal, UserProfile)] = [];
+  stable var stickerRequestsEntries : [(Nat, StickerRequest)] = [];
+  stable var userProfileDetailsEntries : [(Principal, UserProfileDetails)] = [];
+
+  // In-memory maps
   let vehicles = Map.empty<VehicleId, Vehicle>();
   let messages = Map.empty<MessageId, Message>();
   let userProfiles = Map.empty<Principal, UserProfile>();
   let stickerRequests = Map.empty<Nat, StickerRequest>();
+  let userProfileDetails = Map.empty<Principal, UserProfileDetails>();
 
-  // Vehicle registration - users only
+  // Restore from stable storage on every init/upgrade.
+  // The do-block runs after stable vars are deserialized, so data is always present.
+  do {
+    for ((k, v) in vehiclesEntries.vals()) { vehicles.add(k, v) };
+    for ((k, v) in messagesEntries.vals()) { messages.add(k, v) };
+    for ((k, v) in userProfilesEntries.vals()) { userProfiles.add(k, v) };
+    for ((k, v) in stickerRequestsEntries.vals()) { stickerRequests.add(k, v) };
+    for ((k, v) in userProfileDetailsEntries.vals()) { userProfileDetails.add(k, v) };
+  };
+
+  // Save maps to stable storage before every upgrade.
+  system func preupgrade() {
+    vehiclesEntries := vehicles.entries().toArray();
+    messagesEntries := messages.entries().toArray();
+    userProfilesEntries := userProfiles.entries().toArray();
+    stickerRequestsEntries := stickerRequests.entries().toArray();
+    userProfileDetailsEntries := userProfileDetails.entries().toArray();
+  };
+
+  // NOTE: stable arrays are intentionally NOT cleared after upgrade.
+  // They remain as a safety backup and are simply overwritten on the next preupgrade.
+  system func postupgrade() {};
+
+  // HTTP transform for Stripe outcalls
+  public query func stripeTransform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+    OutCall.transform(input);
+  };
+
+  // Stripe configuration
+  public shared ({ caller }) func setStripeConfiguration(secretKey : Text, allowedCountries : [Text]) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admin can configure Stripe");
+    };
+    stripeSecretKey := secretKey;
+    stripeAllowedCountries := allowedCountries;
+  };
+
+  public query ({ caller }) func isStripeConfigured() : async Bool {
+    stripeSecretKey != "";
+  };
+
+  // Create Stripe checkout session
+  public shared ({ caller }) func createCheckoutSession(items : [Stripe.ShoppingItem], successUrl : Text, cancelUrl : Text) : async Text {
+    if (stripeSecretKey == "") {
+      Runtime.trap("Stripe is not configured");
+    };
+    let config : Stripe.StripeConfiguration = {
+      secretKey = stripeSecretKey;
+      allowedCountries = stripeAllowedCountries;
+    };
+    await Stripe.createCheckoutSession(config, caller, items, successUrl, cancelUrl, stripeTransform);
+  };
+
+  // Vehicle registration
   public shared ({ caller }) func registerVehicle(name : Text, description : Text, licensePlate : Text) : async VehicleId {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only authenticated users can add vehicles");
@@ -139,7 +221,7 @@ actor {
     vehicleId;
   };
 
-  // Add message to vehicle (either anonymous or with sender)
+  // Add message to vehicle
   public shared ({ caller }) func addMessage(input : MessageRequest) : async MessageId {
     let vehicle = switch (vehicles.get(input.vehicleId)) {
       case (null) { Runtime.trap("Vehicle not found!") };
@@ -160,7 +242,7 @@ actor {
     messageId;
   };
 
-  // Delete vehicle - only owner or admin
+  // Delete vehicle
   public shared ({ caller }) func deleteVehicle(vehicleId : VehicleId) : async () {
     let vehicle = switch (vehicles.get(vehicleId)) {
       case (null) { Runtime.trap("Vehicle not found!") };
@@ -172,7 +254,7 @@ actor {
     vehicles.remove(vehicleId);
   };
 
-  // Delete message - only vehicle owner or admin
+  // Delete message
   public shared ({ caller }) func deleteMessage(messageId : MessageId) : async () {
     let message = switch (messages.get(messageId)) {
       case (null) { Runtime.trap("Message not found!") };
@@ -195,14 +277,8 @@ actor {
     };
     let myVehicleIds = vehicles.values().toArray().filter(func(v) { v.owner == caller }).sort().map(func(v) { v.id });
     messages.values().toArray().filter(
-      func(m) {
-        myVehicleIds.any(func(id) { id == m.vehicleId });
-      }
-    ).filter(
-      func(m) {
-        not m.isRead;
-      }
-    ).sort();
+      func(m) { myVehicleIds.any(func(id) { id == m.vehicleId }) }
+    ).filter(func(m) { not m.isRead }).sort();
   };
 
   // Get all vehicles for owner
@@ -213,7 +289,7 @@ actor {
     vehicles.values().toArray().filter(func(v) { v.owner == caller }).sort();
   };
 
-  // Get specific vehicle - only owner or admin
+  // Get specific vehicle
   public query ({ caller }) func getVehicle(vehicleId : VehicleId) : async ?Vehicle {
     let vehicle = switch (vehicles.get(vehicleId)) {
       case (null) { return null };
@@ -225,7 +301,7 @@ actor {
     ?vehicle;
   };
 
-  // Get all messages for vehicle - only owner or admin
+  // Get all messages for vehicle
   public query ({ caller }) func getAllMessagesForVehicle(vehicleId : VehicleId) : async [Message] {
     let vehicle = switch (vehicles.get(vehicleId)) {
       case (null) { Runtime.trap("Vehicle not found!") };
@@ -237,7 +313,7 @@ actor {
     messages.values().toArray().filter(func(m) { m.vehicleId == vehicleId }).sort();
   };
 
-  // Get unread messages for vehicle - only owner or admin
+  // Get unread messages for vehicle
   public query ({ caller }) func getUnreadMessagesForVehicle(vehicleId : VehicleId) : async [Message] {
     let vehicle = switch (vehicles.get(vehicleId)) {
       case (null) { Runtime.trap("Vehicle not found!") };
@@ -247,13 +323,11 @@ actor {
       Runtime.trap("Unauthorized: Only the vehicle owner or admin can view unread messages");
     };
     messages.values().toArray().filter(
-      func(m) {
-        m.vehicleId == vehicleId and not m.isRead
-      }
+      func(m) { m.vehicleId == vehicleId and not m.isRead }
     ).sort();
   };
 
-  // Mark message as read - only owner or admin
+  // Mark message as read
   public shared ({ caller }) func markMessageAsRead(messageId : MessageId) : async () {
     let message = switch (messages.get(messageId)) {
       case (null) { Runtime.trap("Message not found!") };
@@ -278,24 +352,18 @@ actor {
     messages.add(messageId, updatedMessage);
   };
 
-  // Get unread messages for all vehicles for a specific user (owners) - only owner or admin
+  // Get unread messages for owner
   public query ({ caller }) func getUnreadMessagesForOwner(owner : Principal) : async [Message] {
     if (caller != owner and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Can only view your own unread messages");
     };
     let ownerVehicles = vehicles.values().toArray().filter(func(v) { v.owner == owner }).sort().map(func(v) { v.id });
     messages.values().toArray().filter(
-      func(m) {
-        ownerVehicles.any(func(vid) { vid == m.vehicleId });
-      }
-    ).filter(
-      func(m) {
-        not m.isRead;
-      }
-    ).sort();
+      func(m) { ownerVehicles.any(func(vid) { vid == m.vehicleId }) }
+    ).filter(func(m) { not m.isRead }).sort();
   };
 
-  // Get all vehicles for user - only that user or admin
+  // Get all vehicles for user
   public query ({ caller }) func getAllVehiclesForUser(user : Principal) : async [Vehicle] {
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Can only view your own vehicles");
@@ -333,11 +401,7 @@ actor {
     let summariesIter = userProfilesIter.map(
       func((p, profile)) {
         let vehicleCount = vehicles.values().toArray().filter(func(v) { v.owner == p }).size();
-        {
-          principal = p;
-          name = ?profile.name;
-          vehicleCount;
-        };
+        { principal = p; name = ?profile.name; vehicleCount };
       }
     );
     summariesIter.toArray();
@@ -351,53 +415,88 @@ actor {
     stickerRequests.values().toArray().sort();
   };
 
-  // Get caller user profile - requires user authentication
-  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
+  // Helper to build full profile
+  func buildFullProfile(base : UserProfile, details : ?UserProfileDetails) : UserProfileFull {
+    switch (details) {
+      case (null) {
+        { name = base.name; email = base.email;
+          phone = null; addressLine1 = null; addressLine2 = null;
+          city = null; stateProvince = null; postcode = null; country = null };
+      };
+      case (?d) {
+        { name = base.name; email = base.email;
+          phone = d.phone; addressLine1 = d.addressLine1; addressLine2 = d.addressLine2;
+          city = d.city; stateProvince = d.stateProvince; postcode = d.postcode; country = d.country };
+      };
+    };
+  };
+
+  // Get caller user profile
+  public query ({ caller }) func getCallerUserProfile() : async ?UserProfileFull {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can access profiles");
     };
-    userProfiles.get(caller);
+    switch (userProfiles.get(caller)) {
+      case (null) { null };
+      case (?base) { ?buildFullProfile(base, userProfileDetails.get(caller)) };
+    };
   };
 
-  // Get specific user profile - only own profile or admin
-  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
+  // Get specific user profile
+  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfileFull {
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Can only view your own profile");
     };
-    userProfiles.get(user);
+    switch (userProfiles.get(user)) {
+      case (null) { null };
+      case (?base) { ?buildFullProfile(base, userProfileDetails.get(user)) };
+    };
   };
 
-  // Save user profile
+  // Save basic profile
   public shared ({ caller }) func saveCallerUserProfile(name : Text, email : Text) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can save profiles");
     };
-    let profile : UserProfile = {
-      name;
-      email;
+    userProfiles.add(caller, { name; email });
+  };
+
+  // Update full profile including phone and mailing address
+  public shared ({ caller }) func updateCallerUserProfile(
+    name : Text,
+    email : Text,
+    phone : ?Text,
+    addressLine1 : ?Text,
+    addressLine2 : ?Text,
+    city : ?Text,
+    stateProvince : ?Text,
+    postcode : ?Text,
+    country : ?Text
+  ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can update profiles");
     };
-    userProfiles.add(caller, profile);
+    userProfiles.add(caller, { name; email });
+    userProfileDetails.add(caller, { phone; addressLine1; addressLine2; city; stateProvince; postcode; country });
   };
 
   // Sticker request
   public shared ({ caller }) func requestSticker(input : StickerRequestInput) : async Nat {
-    let determinedOwner = caller;
-    if (not AccessControl.hasPermission(accessControlState, determinedOwner, #user)) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only vehicle owners can request stickers");
     };
-
     let vehicle = switch (vehicles.get(input.vehicleId)) {
       case (null) { Runtime.trap("Vehicle not found!") };
       case (?vehicle) { vehicle };
     };
-    if (vehicle.owner != determinedOwner) {
+    if (vehicle.owner != caller) {
       Runtime.trap("Unauthorized: Only vehicle owner can request sticker");
     };
     let stickerRequestId = nextStickerRequestId;
     let stickerRequest : StickerRequest = {
       id = stickerRequestId;
       vehicleId = input.vehicleId;
-      owner = determinedOwner;
+      owner = caller;
       name = input.name;
       addressLine1 = input.addressLine1;
       addressLine2 = input.addressLine2;
@@ -414,7 +513,7 @@ actor {
     stickerRequestId;
   };
 
-  // Admin-only function to update sticker request status and tracking note
+  // Update sticker status - admin only
   public shared ({ caller }) func updateStickerStatus(stickerRequestId : Nat, newStatus : Text, trackingNote : ?Text) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admin can update sticker status");
@@ -442,14 +541,11 @@ actor {
     };
   };
 
-  // Get all sticker requests for a user (all their vehicles as owner)
+  // Get sticker requests for current user
   public query ({ caller }) func getMyStickerRequests() : async [StickerRequest] {
-    let user = caller;
-    if (not AccessControl.hasPermission(accessControlState, user, #user)) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only vehicle owners can request stickers");
     };
-
-    stickerRequests.values().toArray().filter(func(sr) { sr.owner == user }).sort();
+    stickerRequests.values().toArray().filter(func(sr) { sr.owner == caller }).sort();
   };
 };
-

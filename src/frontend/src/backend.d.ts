@@ -67,9 +67,24 @@ export interface Vehicle {
     name: string;
     description: string;
 }
+// Full profile shape returned by the backend (combines base + extended details)
 export interface UserProfile {
     name: string;
     email: string;
+    phone?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    city?: string;
+    stateProvince?: string;
+    postcode?: string;
+    country?: string;
+}
+export interface ShoppingItem {
+    currency: string;
+    productName: string;
+    productDescription: string;
+    priceInCents: bigint;
+    quantity: bigint;
 }
 export enum UserRole {
     admin = "admin",
@@ -101,5 +116,20 @@ export interface backendInterface {
     registerVehicle(name: string, description: string, licensePlate: string): Promise<VehicleId>;
     requestSticker(input: StickerRequestInput): Promise<bigint>;
     saveCallerUserProfile(name: string, email: string): Promise<void>;
+    updateCallerUserProfile(
+        name: string,
+        email: string,
+        phone: string | null,
+        addressLine1: string | null,
+        addressLine2: string | null,
+        city: string | null,
+        stateProvince: string | null,
+        postcode: string | null,
+        country: string | null
+    ): Promise<void>;
     updateStickerStatus(stickerRequestId: bigint, newStatus: string, trackingNote: string | null): Promise<void>;
+    // Stripe
+    createCheckoutSession(items: ShoppingItem[], successUrl: string, cancelUrl: string): Promise<string>;
+    isStripeConfigured(): Promise<boolean>;
+    setStripeConfiguration(secretKey: string, allowedCountries: string[]): Promise<void>;
 }

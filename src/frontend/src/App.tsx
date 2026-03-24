@@ -2,7 +2,11 @@ import { Toaster } from "@/components/ui/sonner";
 import AdminPortal from "@/pages/AdminPortal";
 import Dashboard from "@/pages/Dashboard";
 import LandingPage from "@/pages/LandingPage";
+import PaymentFailure from "@/pages/PaymentFailure";
+import PaymentSuccess from "@/pages/PaymentSuccess";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import PublicMessagePage from "@/pages/PublicMessagePage";
+import TermsOfService from "@/pages/TermsOfService";
 import VehicleMessages from "@/pages/VehicleMessages";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -49,12 +53,40 @@ const adminRoute = createRoute({
   component: AdminPortal,
 });
 
+const paymentSuccessRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/payment-success",
+  component: PaymentSuccess,
+});
+
+const paymentFailureRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/payment-failure",
+  component: PaymentFailure,
+});
+
+const privacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/privacy",
+  component: PrivacyPolicy,
+});
+
+const termsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/terms",
+  component: TermsOfService,
+});
+
 const routeTree = rootRoute.addChildren([
   landingRoute,
   dashboardRoute,
   vehicleMessagesRoute,
   publicMessageRoute,
   adminRoute,
+  paymentSuccessRoute,
+  paymentFailureRoute,
+  privacyRoute,
+  termsRoute,
 ]);
 
 const router = createRouter({ routeTree });

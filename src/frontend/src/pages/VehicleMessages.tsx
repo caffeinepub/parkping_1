@@ -8,12 +8,20 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useParams } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Car, Check, MessageSquare, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Car,
+  Check,
+  MessageSquare,
+  Trash2,
+  User,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import type { Message, UserProfile } from "../backend.d";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
+  useDeleteMessage,
   useGetCallerUserProfile,
   useGetMessagesForVehicle,
   useGetMyVehicles,
@@ -42,7 +50,12 @@ export default function VehicleMessages() {
   const { data: messages, isLoading } = useGetMessagesForVehicle(vehicleId);
   const { mutateAsync: markRead, isPending: markingRead } =
     useMarkMessageAsRead();
+  const { mutateAsync: deleteMsg, isPending: deletingMsg } = useDeleteMessage();
   const { data: userProfile } = useGetCallerUserProfile();
+
+  const sortedMessages = messages
+    ? [...messages].sort((a, b) => Number(b.timestamp - a.timestamp))
+    : [];
 
   const handleMarkRead = async (messageId: bigint) => {
     try {
@@ -50,6 +63,15 @@ export default function VehicleMessages() {
       toast.success("Marked as read");
     } catch {
       toast.error("Failed to mark as read");
+    }
+  };
+
+  const handleDelete = async (messageId: bigint) => {
+    try {
+      await deleteMsg(messageId);
+      toast.success("Message deleted");
+    } catch {
+      toast.error("Failed to delete message");
     }
   };
 
@@ -74,7 +96,6 @@ export default function VehicleMessages() {
         data-ocid="vehicle_messages.section"
       >
         <div className="max-w-4xl mx-auto">
-          {/* Back + header */}
           <div className="flex items-center gap-3 mt-6 mb-8">
             <Link to="/dashboard">
               <Button
@@ -102,7 +123,6 @@ export default function VehicleMessages() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Messages */}
             <div className="lg:col-span-2">
               <h2 className="text-lg font-bold text-navy mb-5">
                 Messages
@@ -122,7 +142,7 @@ export default function VehicleMessages() {
                     <Skeleton key={i} className="h-24 rounded-xl" />
                   ))}
                 </div>
-              ) : !messages || messages.length === 0 ? (
+              ) : sortedMessages.length === 0 ? (
                 <div
                   className="text-center py-16 bg-white rounded-2xl border border-border shadow-card"
                   data-ocid="vehicle_messages.empty_state"
@@ -137,7 +157,7 @@ export default function VehicleMessages() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {messages.map((msg: Message, idx: number) => (
+                  {sortedMessages.map((msg: Message, idx: number) => (
                     <motion.div
                       key={msg.id.toString()}
                       initial={{ opacity: 0, x: -12 }}
@@ -174,19 +194,31 @@ export default function VehicleMessages() {
                             </p>
                           </div>
                         </div>
-                        {!msg.isRead && (
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {!msg.isRead && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleMarkRead(msg.id)}
+                              disabled={markingRead}
+                              className="text-primary hover:text-primary/80 hover:bg-primary/5 gap-1.5"
+                              data-ocid={`vehicle_messages.secondary_button.${idx + 1}`}
+                            >
+                              <Check className="w-4 h-4" />
+                              Mark read
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleMarkRead(msg.id)}
-                            disabled={markingRead}
-                            className="text-primary hover:text-primary/80 hover:bg-primary/5 gap-1.5 flex-shrink-0"
-                            data-ocid={`vehicle_messages.secondary_button.${idx + 1}`}
+                            onClick={() => handleDelete(msg.id)}
+                            disabled={deletingMsg}
+                            className="text-destructive hover:text-destructive/80 hover:bg-destructive/5"
+                            data-ocid={`vehicle_messages.delete_button.${idx + 1}`}
                           >
-                            <Check className="w-4 h-4" />
-                            Mark read
+                            <Trash2 className="w-4 h-4" />
                           </Button>
-                        )}
+                        </div>
                       </div>
                     </motion.div>
                   ))}
@@ -194,7 +226,6 @@ export default function VehicleMessages() {
               )}
             </div>
 
-            {/* QR sidebar */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-2xl border border-border shadow-card p-6 sticky top-24">
                 <h3 className="font-bold text-navy mb-2 flex items-center gap-2">
@@ -202,7 +233,7 @@ export default function VehicleMessages() {
                 </h3>
                 <p className="text-xs text-muted-foreground mb-5">
                   Print this QR code and stick it on your vehicle. Anyone who
-                  scans it can get notified.
+                  scans it can send you a message.
                 </p>
                 <QRCodeDisplay
                   url={`${window.location.origin}/message/${id}`}

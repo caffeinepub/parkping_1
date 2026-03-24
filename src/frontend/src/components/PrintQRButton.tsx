@@ -52,13 +52,8 @@ export function printQRCode({
             font-size: 22px;
             font-weight: 800;
             letter-spacing: -0.5px;
-            margin-bottom: 4px;
-            color: #0a1628;
-          }
-          .subtitle {
-            font-size: 13px;
-            color: #666;
             margin-bottom: 20px;
+            color: #0a1628;
           }
           .qr img {
             width: 220px;
@@ -79,10 +74,10 @@ export function printQRCode({
           }
           .scan-note {
             margin-top: 16px;
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 15px;
+            font-weight: 700;
             color: #0d9488;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
             text-transform: uppercase;
           }
           @media print {
@@ -92,19 +87,16 @@ export function printQRCode({
       </head>
       <body>
         <div class="card">
-          <div class="logo">🅿 ParkPing</div>
-          <div class="subtitle">Scan to get notified</div>
+          <div class="logo">\uD83C\uDD7F ParkPing</div>
           <div class="qr">
             <img src="${qrUrl}" alt="QR Code" />
           </div>
           <div class="vehicle-name">${vehicleName}</div>
           ${licensePlate ? `<div class="license-plate">${licensePlate}</div>` : ""}
-          <div class="scan-note">📱 Scan to get notified</div>
+          <div class="scan-note">SCAN TO MESSAGE OWNER</div>
         </div>
         <script>
-          window.onload = function() {
-            window.print();
-          };
+          window.onload = function() { window.print(); };
         <\/script>
       </body>
     </html>

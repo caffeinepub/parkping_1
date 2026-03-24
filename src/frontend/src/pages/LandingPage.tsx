@@ -89,7 +89,8 @@ export default function LandingPage() {
             >
               <div className="inline-flex items-center gap-2 bg-teal-light text-primary rounded-full px-4 py-1.5 text-sm font-medium mb-6">
                 <QrCode className="w-4 h-4" />
-                Powered by ICP Decentralized Cloud
+                Powered by Internet Computer Protocol (ICP) - Decentralized
+                Blockchain
               </div>
               <h1 className="text-5xl sm:text-6xl font-extrabold text-navy leading-tight mb-6">
                 Get notified.
@@ -147,7 +148,7 @@ export default function LandingPage() {
                 {/* Background mint blob */}
                 <div className="absolute inset-0 -z-10 bg-teal-light rounded-[3rem] opacity-60 scale-110" />
                 <img
-                  src="/assets/generated/hero-car-qr.dim_520x420.png"
+                  src="/assets/uploads/image-019d1fed-ee1d-770d-9936-19fbb9f174b8-1.png"
                   alt="Car with QR sticker and person scanning with phone"
                   className="w-full max-w-md rounded-3xl shadow-card"
                 />
@@ -167,7 +168,7 @@ export default function LandingPage() {
             {[
               { value: "100%", label: "On-Chain" },
               { value: "0", label: "App Downloads Required" },
-              { value: "∞", label: "Messages, Forever" },
+              { value: "🔒", label: "Secured by Advanced Cryptography" },
             ].map((stat) => (
               <div key={stat.label}>
                 <div className="text-3xl font-extrabold text-primary mb-1">

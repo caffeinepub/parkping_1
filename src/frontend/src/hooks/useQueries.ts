@@ -124,6 +124,21 @@ export function useMarkMessageAsRead() {
   });
 }
 
+export function useDeleteMessage() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (messageId: MessageId) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.deleteMessage(messageId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["messages"] });
+      qc.invalidateQueries({ queryKey: ["unreadMessages"] });
+    },
+  });
+}
+
 export function useIsCallerAdmin() {
   const { actor, isFetching } = useActor();
   return useQuery<boolean>({
@@ -199,5 +214,27 @@ export function useUpdateStickerStatus() {
       return actor.updateStickerStatus(id, status, trackingNote);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["allStickerRequests"] }),
+  });
+}
+
+export function useUpdateCallerUserProfile() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      name: string;
+      email: string;
+      phone: string | null;
+      addressLine1: string | null;
+      addressLine2: string | null;
+      city: string | null;
+      stateProvince: string | null;
+      postcode: string | null;
+      country: string | null;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.saveCallerUserProfile(data.name, data.email);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["currentUserProfile"] }),
   });
 }

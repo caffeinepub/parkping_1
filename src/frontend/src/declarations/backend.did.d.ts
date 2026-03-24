@@ -12,6 +12,7 @@ import type { Principal } from '@icp-sdk/core/principal';
 
 export interface AdminStats {
   'totalVehicles' : bigint,
+  'totalStickerRequests' : bigint,
   'totalMessages' : bigint,
   'totalUsers' : bigint,
 }
@@ -30,8 +31,42 @@ export interface MessageRequest {
   'senderName' : [] | [string],
   'vehicleId' : VehicleId,
 }
+export interface QrPrintRequest {
+  'id' : bigint,
+  'status' : string,
+  'completedAt' : [] | [Time],
+  'owner' : Principal,
+  'isReplacement' : boolean,
+  'requestedAt' : Time,
+  'vehicleId' : VehicleId,
+}
+export interface StickerRequest {
+  'id' : bigint,
+  'status' : string,
+  'trackingNote' : [] | [string],
+  'postcode' : string,
+  'country' : string,
+  'owner' : Principal,
+  'city' : string,
+  'name' : string,
+  'stateProvince' : string,
+  'addressLine1' : string,
+  'addressLine2' : string,
+  'requestedAt' : Time,
+  'vehicleId' : VehicleId,
+}
+export interface StickerRequestInput {
+  'postcode' : string,
+  'country' : string,
+  'city' : string,
+  'name' : string,
+  'stateProvince' : string,
+  'addressLine1' : string,
+  'addressLine2' : string,
+  'vehicleId' : VehicleId,
+}
 export type Time = bigint;
-export interface UserProfile { 'name' : string }
+export interface UserProfile { 'name' : string, 'email' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
@@ -56,11 +91,15 @@ export interface _SERVICE {
   'deleteVehicle' : ActorMethod<[VehicleId], undefined>,
   'getAdminStats' : ActorMethod<[], AdminStats>,
   'getAllMessagesForVehicle' : ActorMethod<[VehicleId], Array<Message>>,
+  'getAllQrPrintRequests' : ActorMethod<[], Array<QrPrintRequest>>,
+  'getAllStickerRequests' : ActorMethod<[], Array<StickerRequest>>,
   'getAllUsers' : ActorMethod<[], Array<UserSummary>>,
   'getAllVehicles' : ActorMethod<[], Array<Vehicle>>,
   'getAllVehiclesForUser' : ActorMethod<[Principal], Array<Vehicle>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getMyQrPrintRequests' : ActorMethod<[], Array<QrPrintRequest>>,
+  'getMyStickerRequests' : ActorMethod<[], Array<StickerRequest>>,
   'getMyVehicles' : ActorMethod<[], Array<Vehicle>>,
   'getUnreadMessages' : ActorMethod<[], Array<Message>>,
   'getUnreadMessagesForOwner' : ActorMethod<[Principal], Array<Message>>,
@@ -69,8 +108,15 @@ export interface _SERVICE {
   'getVehicle' : ActorMethod<[VehicleId], [] | [Vehicle]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'markMessageAsRead' : ActorMethod<[MessageId], undefined>,
+  'markQrPrintComplete' : ActorMethod<[bigint], undefined>,
   'registerVehicle' : ActorMethod<[string, string, string], VehicleId>,
-  'saveCallerUserProfile' : ActorMethod<[string], undefined>,
+  'requestQrPrint' : ActorMethod<[bigint], bigint>,
+  'requestSticker' : ActorMethod<[StickerRequestInput], bigint>,
+  'saveCallerUserProfile' : ActorMethod<[string, string], undefined>,
+  'updateStickerStatus' : ActorMethod<
+    [bigint, string, [] | [string]],
+    undefined
+  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

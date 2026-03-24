@@ -92,7 +92,7 @@ export default function LandingPage() {
                 Powered by ICP Decentralized Cloud
               </div>
               <h1 className="text-5xl sm:text-6xl font-extrabold text-navy leading-tight mb-6">
-                Leave a note.
+                Get notified.
                 <br />
                 <span className="text-primary">Save a tow.</span>
               </h1>

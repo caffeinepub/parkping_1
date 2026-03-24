@@ -17,7 +17,7 @@ export default function Footer() {
               <span className="font-bold text-xl">ParkPing</span>
             </div>
             <p className="text-sm text-white/60 max-w-xs leading-relaxed">
-              Leave a note. Save a tow. ParkPing lets anyone leave a message for
+              Get notified. Save a tow. ParkPing lets anyone leave a message for
               your parked vehicle — no phone numbers, no apps, just a QR code.
             </p>
             <div className="flex items-center gap-3 mt-5">
@@ -104,19 +104,51 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/40">
-          <span>
-            © {year} ParkPing. All rights reserved. Powered by ICP decentralized
-            cloud.
-          </span>
-          <a
-            href={utmLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-white/70 transition-colors"
-          >
-            Built with ❤️ using caffeine.ai
-          </a>
+        <div className="mt-10 pt-8 border-t border-white/10">
+          {/* ICP Badges */}
+          <div className="flex flex-wrap items-center gap-4 mb-6 justify-center sm:justify-start">
+            <a
+              href="https://internetcomputer.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="opacity-80 hover:opacity-100 transition-opacity"
+              aria-label="Powered by Internet Computer"
+            >
+              <img
+                src="/assets/uploads/image-019d1d78-acd1-7149-b42b-9a2cca616221-1.png"
+                alt="Powered by Internet Computer"
+                className="h-8 w-auto bg-white/10 rounded-md px-2 py-1"
+              />
+            </a>
+            <a
+              href="https://internetcomputer.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="opacity-80 hover:opacity-100 transition-opacity"
+              aria-label="Powered by Internet Computer"
+            >
+              <img
+                src="/assets/uploads/image-019d1d7b-9c40-733e-82e1-7ed8959464d3-2.png"
+                alt="Powered by Internet Computer"
+                className="h-8 w-auto bg-white/10 rounded-md px-2 py-1"
+              />
+            </a>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/40">
+            <span>
+              © {year} ParkPing. All rights reserved. Powered by ICP
+              decentralized cloud.
+            </span>
+            <a
+              href={utmLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white/70 transition-colors"
+            >
+              Built with ❤️ using caffeine.ai
+            </a>
+          </div>
         </div>
       </div>
     </footer>

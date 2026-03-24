@@ -1,6 +1,8 @@
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
+import PrintQRButton from "@/components/PrintQRButton";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
+import RequestStickerDialog from "@/components/RequestStickerDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,9 +11,10 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Car, Check, MessageSquare, User } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
-import type { Message } from "../backend.d";
+import type { Message, UserProfile } from "../backend.d";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
+  useGetCallerUserProfile,
   useGetMessagesForVehicle,
   useGetMyVehicles,
   useMarkMessageAsRead,
@@ -39,6 +42,7 @@ export default function VehicleMessages() {
   const { data: messages, isLoading } = useGetMessagesForVehicle(vehicleId);
   const { mutateAsync: markRead, isPending: markingRead } =
     useMarkMessageAsRead();
+  const { data: userProfile } = useGetCallerUserProfile();
 
   const handleMarkRead = async (messageId: bigint) => {
     try {
@@ -198,7 +202,7 @@ export default function VehicleMessages() {
                 </h3>
                 <p className="text-xs text-muted-foreground mb-5">
                   Print this QR code and stick it on your vehicle. Anyone who
-                  scans it can leave you a message.
+                  scans it can get notified.
                 </p>
                 <QRCodeDisplay
                   url={`${window.location.origin}/message/${id}`}
@@ -219,6 +223,29 @@ export default function VehicleMessages() {
                     Download QR Code
                   </Button>
                 </a>
+                <PrintQRButton
+                  vehicleName={vehicle?.name ?? "Vehicle"}
+                  licensePlate={vehicle?.licensePlate}
+                  vehicleId={id}
+                  className="w-full mt-2 border-border text-foreground hover:text-primary hover:border-primary"
+                />
+                <div className="mt-2">
+                  <RequestStickerDialog
+                    vehicleId={vehicleId}
+                    vehicleName={vehicle?.name ?? "Vehicle"}
+                    userProfile={userProfile as UserProfile | null}
+                    trigger={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-primary text-primary hover:bg-primary/5 gap-1.5"
+                        data-ocid="vehicle_messages.open_modal_button"
+                      >
+                        Request Weatherproof Sticker
+                      </Button>
+                    }
+                  />
+                </div>
               </div>
             </div>
           </div>

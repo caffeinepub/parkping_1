@@ -1,73 +1,87 @@
 import Map "mo:core/Map";
-import Nat "mo:core/Nat";
 import Principal "mo:core/Principal";
+import Nat "mo:core/Nat";
 import Time "mo:core/Time";
-import Authorize "authorization/access-control";
 
 module {
-  // Types
-  type MigrationProfile = {
-    name : Text;
-  };
-  type VehicleId = Nat;
-  type MessageId = Nat;
-  type Vehicle = {
-    id : VehicleId;
-    owner : Principal;
-    name : Text;
-    description : Text;
-    licensePlate : Text;
-  };
-  type OldCore = {
-    vehicles : Map.Map<VehicleId, Vehicle>;
-    messages : Map.Map<MessageId, OldMessage>;
+  // Old Types
+  type OldActor = {
+    vehicles : Map.Map<Nat, {
+      id : Nat;
+      owner : Principal;
+      name : Text;
+      description : Text;
+      licensePlate : Text;
+    }>;
+    messages : Map.Map<Nat, {
+      id : Nat;
+      vehicleId : Nat;
+      senderName : ?Text;
+      sender : ?Principal;
+      message : Text;
+      timestamp : Time.Time;
+      isRead : Bool;
+    }>;
+    userProfiles : Map.Map<Principal, {
+      name : Text;
+      email : Text;
+    }>;
+    stickerRequests : Map.Map<Nat, {
+      id : Nat;
+      vehicleId : Nat;
+      owner : Principal;
+      name : Text;
+      addressLine1 : Text;
+      addressLine2 : Text;
+      city : Text;
+      stateProvince : Text;
+      postcode : Text;
+      country : Text;
+      status : Text;
+      requestedAt : Time.Time;
+      trackingNote : ?Text;
+    }>;
     nextVehicleId : Nat;
     nextMessageId : Nat;
-    accessControlState : Authorize.AccessControlState;
+    nextStickerRequestId : Nat;
   };
 
-  // Old message transformation
-  type OldMessage = {
-    id : MessageId;
-    vehicleId : VehicleId;
-    senderName : ?Text;
-    message : Text;
-    timestamp : Time.Time;
-    isRead : Bool;
-  };
-
-  // New message transformation
-  type NewMessage = {
-    id : MessageId;
-    vehicleId : VehicleId;
-    senderName : ?Text;
-    sender : ?Principal;
-    message : Text;
-    timestamp : Time.Time;
-    isRead : Bool;
-  };
-
-  // New core transformation
-  type NewCore = {
-    vehicles : Map.Map<VehicleId, Vehicle>;
-    messages : Map.Map<MessageId, NewMessage>;
-    nextVehicleId : Nat;
-    nextMessageId : Nat;
-    userProfiles : Map.Map<Principal, MigrationProfile>;
-    accessControlState : Authorize.AccessControlState;
+  // New Types
+  type NewActor = OldActor and {
+    qrPrintRequests : Map.Map<Nat, {
+      id : Nat;
+      vehicleId : Nat;
+      owner : Principal;
+      isReplacement : Bool;
+      status : Text;
+      requestedAt : Time.Time;
+      completedAt : ?Time.Time;
+    }>;
+    freeQrPrintUsed : Map.Map<Nat, Bool>;
+    nextQrRequestId : Nat;
   };
 
   // Migration function
-  public func run(old : OldCore) : NewCore {
+  public func run(old : OldActor) : NewActor {
     {
-      old with
+      qrPrintRequests = Map.empty<Nat, {
+        id : Nat;
+        vehicleId : Nat;
+        owner : Principal;
+        isReplacement : Bool;
+        status : Text;
+        requestedAt : Time.Time;
+        completedAt : ?Time.Time;
+      }>();
+      freeQrPrintUsed = Map.empty<Nat, Bool>();
+      nextQrRequestId = 0;
       vehicles = old.vehicles;
-      messages = old.messages.map<MessageId, OldMessage, NewMessage>(
-        func(_k, v) {
-          { v with sender = null };
-        }
-      );
-      userProfiles = Map.empty<Principal, MigrationProfile>();
+      messages = old.messages;
+      userProfiles = old.userProfiles;
+      stickerRequests = old.stickerRequests;
+      nextVehicleId = old.nextVehicleId;
+      nextMessageId = old.nextMessageId;
+      nextStickerRequestId = old.nextStickerRequestId;
     };
   };
 };

@@ -91,16 +91,50 @@ export class ExternalBlob {
 }
 export type VehicleId = bigint;
 export type Time = bigint;
-export type MessageId = bigint;
+export interface StickerRequest {
+    id: bigint;
+    status: string;
+    trackingNote?: string;
+    postcode: string;
+    country: string;
+    owner: Principal;
+    city: string;
+    name: string;
+    stateProvince: string;
+    addressLine1: string;
+    addressLine2: string;
+    requestedAt: Time;
+    vehicleId: VehicleId;
+}
 export interface UserSummary {
     principal: Principal;
     name?: string;
     vehicleCount: bigint;
 }
-export interface AdminStats {
-    totalVehicles: bigint;
-    totalMessages: bigint;
-    totalUsers: bigint;
+export type MessageId = bigint;
+export interface StickerRequestInput {
+    postcode: string;
+    country: string;
+    city: string;
+    name: string;
+    stateProvince: string;
+    addressLine1: string;
+    addressLine2: string;
+    vehicleId: VehicleId;
+}
+export interface QrPrintRequest {
+    id: bigint;
+    status: string;
+    completedAt?: Time;
+    owner: Principal;
+    isReplacement: boolean;
+    requestedAt: Time;
+    vehicleId: VehicleId;
+}
+export interface MessageRequest {
+    message: string;
+    senderName?: string;
+    vehicleId: VehicleId;
 }
 export interface Message {
     id: MessageId;
@@ -108,11 +142,6 @@ export interface Message {
     sender?: Principal;
     message: string;
     timestamp: Time;
-    senderName?: string;
-    vehicleId: VehicleId;
-}
-export interface MessageRequest {
-    message: string;
     senderName?: string;
     vehicleId: VehicleId;
 }
@@ -125,6 +154,13 @@ export interface Vehicle {
 }
 export interface UserProfile {
     name: string;
+    email: string;
+}
+export interface AdminStats {
+    totalVehicles: bigint;
+    totalStickerRequests: bigint;
+    totalMessages: bigint;
+    totalUsers: bigint;
 }
 export enum UserRole {
     admin = "admin",
@@ -139,11 +175,15 @@ export interface backendInterface {
     deleteVehicle(vehicleId: VehicleId): Promise<void>;
     getAdminStats(): Promise<AdminStats>;
     getAllMessagesForVehicle(vehicleId: VehicleId): Promise<Array<Message>>;
+    getAllQrPrintRequests(): Promise<Array<QrPrintRequest>>;
+    getAllStickerRequests(): Promise<Array<StickerRequest>>;
     getAllUsers(): Promise<Array<UserSummary>>;
     getAllVehicles(): Promise<Array<Vehicle>>;
     getAllVehiclesForUser(user: Principal): Promise<Array<Vehicle>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getMyQrPrintRequests(): Promise<Array<QrPrintRequest>>;
+    getMyStickerRequests(): Promise<Array<StickerRequest>>;
     getMyVehicles(): Promise<Array<Vehicle>>;
     getUnreadMessages(): Promise<Array<Message>>;
     getUnreadMessagesForOwner(owner: Principal): Promise<Array<Message>>;
@@ -152,10 +192,14 @@ export interface backendInterface {
     getVehicle(vehicleId: VehicleId): Promise<Vehicle | null>;
     isCallerAdmin(): Promise<boolean>;
     markMessageAsRead(messageId: MessageId): Promise<void>;
+    markQrPrintComplete(requestId: bigint): Promise<void>;
     registerVehicle(name: string, description: string, licensePlate: string): Promise<VehicleId>;
-    saveCallerUserProfile(name: string): Promise<void>;
+    requestQrPrint(vehicleId: bigint): Promise<bigint>;
+    requestSticker(input: StickerRequestInput): Promise<bigint>;
+    saveCallerUserProfile(name: string, email: string): Promise<void>;
+    updateStickerStatus(stickerRequestId: bigint, newStatus: string, trackingNote: string | null): Promise<void>;
 }
-import type { Message as _Message, MessageId as _MessageId, MessageRequest as _MessageRequest, Time as _Time, UserProfile as _UserProfile, UserRole as _UserRole, UserSummary as _UserSummary, Vehicle as _Vehicle, VehicleId as _VehicleId } from "./declarations/backend.did.d.ts";
+import type { Message as _Message, MessageId as _MessageId, MessageRequest as _MessageRequest, QrPrintRequest as _QrPrintRequest, StickerRequest as _StickerRequest, Time as _Time, UserProfile as _UserProfile, UserRole as _UserRole, UserSummary as _UserSummary, Vehicle as _Vehicle, VehicleId as _VehicleId } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -256,18 +300,46 @@ export class Backend implements backendInterface {
             return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getAllUsers(): Promise<Array<UserSummary>> {
+    async getAllQrPrintRequests(): Promise<Array<QrPrintRequest>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getAllUsers();
+                const result = await this.actor.getAllQrPrintRequests();
                 return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getAllUsers();
+            const result = await this.actor.getAllQrPrintRequests();
             return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getAllStickerRequests(): Promise<Array<StickerRequest>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllStickerRequests();
+                return from_candid_vec_n14(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllStickerRequests();
+            return from_candid_vec_n14(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getAllUsers(): Promise<Array<UserSummary>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllUsers();
+                return from_candid_vec_n17(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllUsers();
+            return from_candid_vec_n17(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAllVehicles(): Promise<Array<Vehicle>> {
@@ -302,28 +374,56 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n14(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n14(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n21(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getMyQrPrintRequests(): Promise<Array<QrPrintRequest>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMyQrPrintRequests();
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMyQrPrintRequests();
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getMyStickerRequests(): Promise<Array<StickerRequest>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMyStickerRequests();
+                return from_candid_vec_n14(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMyStickerRequests();
+            return from_candid_vec_n14(this._uploadFile, this._downloadFile, result);
         }
     }
     async getMyVehicles(): Promise<Array<Vehicle>> {
@@ -386,28 +486,28 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getUserProfile(arg0);
-                return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUserProfile(arg0);
-            return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
         }
     }
     async getVehicle(arg0: VehicleId): Promise<Vehicle | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getVehicle(arg0);
-                return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n23(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getVehicle(arg0);
-            return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n23(this._uploadFile, this._downloadFile, result);
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -438,6 +538,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async markQrPrintComplete(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.markQrPrintComplete(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.markQrPrintComplete(arg0);
+            return result;
+        }
+    }
     async registerVehicle(arg0: string, arg1: string, arg2: string): Promise<VehicleId> {
         if (this.processError) {
             try {
@@ -452,17 +566,59 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async saveCallerUserProfile(arg0: string): Promise<void> {
+    async requestQrPrint(arg0: bigint): Promise<bigint> {
         if (this.processError) {
             try {
-                const result = await this.actor.saveCallerUserProfile(arg0);
+                const result = await this.actor.requestQrPrint(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.saveCallerUserProfile(arg0);
+            const result = await this.actor.requestQrPrint(arg0);
+            return result;
+        }
+    }
+    async requestSticker(arg0: StickerRequestInput): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.requestSticker(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.requestSticker(arg0);
+            return result;
+        }
+    }
+    async saveCallerUserProfile(arg0: string, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.saveCallerUserProfile(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.saveCallerUserProfile(arg0, arg1);
+            return result;
+        }
+    }
+    async updateStickerStatus(arg0: bigint, arg1: string, arg2: string | null): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateStickerStatus(arg0, arg1, to_candid_opt_n24(this._uploadFile, this._downloadFile, arg2));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateStickerStatus(arg0, arg1, to_candid_opt_n24(this._uploadFile, this._downloadFile, arg2));
             return result;
         }
     }
@@ -470,16 +626,25 @@ export class Backend implements backendInterface {
 function from_candid_Message_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Message): Message {
     return from_candid_record_n7(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserRole_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n15(_uploadFile, _downloadFile, value);
-}
-function from_candid_UserSummary_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserSummary): UserSummary {
+function from_candid_QrPrintRequest_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _QrPrintRequest): QrPrintRequest {
     return from_candid_record_n12(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+function from_candid_StickerRequest_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _StickerRequest): StickerRequest {
+    return from_candid_record_n16(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserRole_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n22(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserSummary_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserSummary): UserSummary {
+    return from_candid_record_n19(_uploadFile, _downloadFile, value);
+}
+function from_candid_opt_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Time]): Time | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Vehicle]): Vehicle | null {
+function from_candid_opt_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Vehicle]): Vehicle | null {
     return value.length === 0 ? null : value[0];
 }
 function from_candid_opt_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [Principal]): Principal | null {
@@ -489,6 +654,78 @@ function from_candid_opt_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
     return value.length === 0 ? null : value[0];
 }
 function from_candid_record_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: bigint;
+    status: string;
+    completedAt: [] | [_Time];
+    owner: Principal;
+    isReplacement: boolean;
+    requestedAt: _Time;
+    vehicleId: _VehicleId;
+}): {
+    id: bigint;
+    status: string;
+    completedAt?: Time;
+    owner: Principal;
+    isReplacement: boolean;
+    requestedAt: Time;
+    vehicleId: VehicleId;
+} {
+    return {
+        id: value.id,
+        status: value.status,
+        completedAt: record_opt_to_undefined(from_candid_opt_n13(_uploadFile, _downloadFile, value.completedAt)),
+        owner: value.owner,
+        isReplacement: value.isReplacement,
+        requestedAt: value.requestedAt,
+        vehicleId: value.vehicleId
+    };
+}
+function from_candid_record_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: bigint;
+    status: string;
+    trackingNote: [] | [string];
+    postcode: string;
+    country: string;
+    owner: Principal;
+    city: string;
+    name: string;
+    stateProvince: string;
+    addressLine1: string;
+    addressLine2: string;
+    requestedAt: _Time;
+    vehicleId: _VehicleId;
+}): {
+    id: bigint;
+    status: string;
+    trackingNote?: string;
+    postcode: string;
+    country: string;
+    owner: Principal;
+    city: string;
+    name: string;
+    stateProvince: string;
+    addressLine1: string;
+    addressLine2: string;
+    requestedAt: Time;
+    vehicleId: VehicleId;
+} {
+    return {
+        id: value.id,
+        status: value.status,
+        trackingNote: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.trackingNote)),
+        postcode: value.postcode,
+        country: value.country,
+        owner: value.owner,
+        city: value.city,
+        name: value.name,
+        stateProvince: value.stateProvince,
+        addressLine1: value.addressLine1,
+        addressLine2: value.addressLine2,
+        requestedAt: value.requestedAt,
+        vehicleId: value.vehicleId
+    };
+}
+function from_candid_record_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     principal: Principal;
     name: [] | [string];
     vehicleCount: bigint;
@@ -530,7 +767,7 @@ function from_candid_record_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint
         vehicleId: value.vehicleId
     };
 }
-function from_candid_variant_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -539,8 +776,14 @@ function from_candid_variant_n15(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_vec_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_UserSummary>): Array<UserSummary> {
-    return value.map((x)=>from_candid_UserSummary_n11(_uploadFile, _downloadFile, x));
+function from_candid_vec_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_QrPrintRequest>): Array<QrPrintRequest> {
+    return value.map((x)=>from_candid_QrPrintRequest_n11(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_StickerRequest>): Array<StickerRequest> {
+    return value.map((x)=>from_candid_StickerRequest_n15(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_UserSummary>): Array<UserSummary> {
+    return value.map((x)=>from_candid_UserSummary_n18(_uploadFile, _downloadFile, x));
 }
 function from_candid_vec_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Message>): Array<Message> {
     return value.map((x)=>from_candid_Message_n6(_uploadFile, _downloadFile, x));
@@ -550,6 +793,9 @@ function to_candid_MessageRequest_n1(_uploadFile: (file: ExternalBlob) => Promis
 }
 function to_candid_UserRole_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
     return to_candid_variant_n4(_uploadFile, _downloadFile, value);
+}
+function to_candid_opt_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
+    return value === null ? candid_none() : candid_some(value);
 }
 function to_candid_record_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     message: string;

@@ -1,35 +1,25 @@
 # ParkPing
 
 ## Current State
-- Users can register vehicles and get QR codes
-- Users can request weatherproof stickers to be mailed (StickerRequest)
-- Admin portal has Users and Sticker Requests tabs
-- Admin can mark sticker requests as shipped with tracking note
+Admin portal shows sticker requests in a read-only table with status badges. No action to update status.
 
 ## Requested Changes (Diff)
 
 ### Add
-- QrPrintRequest type: tracks requests from users to have their QR code printed by admin
-- Each vehicle gets one free QR code print included; replacement prints require $9.99 + shipping
-- Backend: `requestQrPrint(vehicleId)` - user requests a QR print; fails if replacement request exists without payment
-- Backend: `getAllQrPrintRequests()` - admin only, returns all QR print requests
-- Backend: `getMyQrPrintRequests()` - user sees their own requests
-- Backend: `markQrPrintComplete(requestId)` - admin marks as printed/fulfilled
-- Track `freeQrUsed` per vehicle (bool) to know if first free print has been requested
-- Admin dashboard: new "QR Print Requests" tab listing pending requests
-- Each request row has a "Print QR" button that opens a print-optimized view with the QR code for that vehicle URL
-- Show a note in the admin UI indicating whether it was a free or paid ($9.99) request
-- User dashboard vehicle card: "Request QR Print" button; if free slot available shows free, otherwise shows $9.99 + shipping
+- Backend: `trackingNote` field to `StickerRequest` type
+- Backend: `updateStickerStatus(id, status, trackingNote)` function — admin only
+- Frontend: "Mark as Shipped" button on pending sticker request rows
+- Frontend: Dialog/modal to enter tracking number before marking shipped
+- Frontend: Mutation hook for `updateStickerStatus`
 
 ### Modify
-- AdminPortal.tsx: add QR Print Requests tab with print functionality
-- Dashboard vehicle cards: add "Request QR Print" button
+- Sticker requests table to include action column with status-change button
 
 ### Remove
-- Nothing removed
+- Nothing
 
 ## Implementation Plan
-1. Add QrPrintRequest type and related functions to backend
-2. Generate updated Motoko code
-3. Add QR Print Requests tab to admin dashboard with Print QR button that triggers browser print with QR code rendered
-4. Add request QR print button to user vehicle cards
+1. Add `trackingNote` to `StickerRequest` type and `updateStickerStatus` backend function
+2. Regenerate bindings via Motoko codegen
+3. Add mutation hook in frontend
+4. Update AdminPortal sticker table with action column and ship dialog

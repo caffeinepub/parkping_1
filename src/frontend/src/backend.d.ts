@@ -40,20 +40,6 @@ export interface StickerRequestInput {
     addressLine2: string;
     vehicleId: VehicleId;
 }
-export interface QrPrintRequest {
-    id: bigint;
-    status: string;
-    completedAt?: Time;
-    owner: Principal;
-    isReplacement: boolean;
-    requestedAt: Time;
-    vehicleId: VehicleId;
-}
-export interface MessageRequest {
-    message: string;
-    senderName?: string;
-    vehicleId: VehicleId;
-}
 export interface Message {
     id: MessageId;
     isRead: boolean;
@@ -62,6 +48,17 @@ export interface Message {
     timestamp: Time;
     senderName?: string;
     vehicleId: VehicleId;
+}
+export interface MessageRequest {
+    message: string;
+    senderName?: string;
+    vehicleId: VehicleId;
+}
+export interface AdminStats {
+    totalVehicles: bigint;
+    totalStickerRequests: bigint;
+    totalMessages: bigint;
+    totalUsers: bigint;
 }
 export interface Vehicle {
     id: VehicleId;
@@ -73,12 +70,6 @@ export interface Vehicle {
 export interface UserProfile {
     name: string;
     email: string;
-}
-export interface AdminStats {
-    totalVehicles: bigint;
-    totalStickerRequests: bigint;
-    totalMessages: bigint;
-    totalUsers: bigint;
 }
 export enum UserRole {
     admin = "admin",
@@ -92,14 +83,12 @@ export interface backendInterface {
     deleteVehicle(vehicleId: VehicleId): Promise<void>;
     getAdminStats(): Promise<AdminStats>;
     getAllMessagesForVehicle(vehicleId: VehicleId): Promise<Array<Message>>;
-    getAllQrPrintRequests(): Promise<Array<QrPrintRequest>>;
     getAllStickerRequests(): Promise<Array<StickerRequest>>;
     getAllUsers(): Promise<Array<UserSummary>>;
     getAllVehicles(): Promise<Array<Vehicle>>;
     getAllVehiclesForUser(user: Principal): Promise<Array<Vehicle>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    getMyQrPrintRequests(): Promise<Array<QrPrintRequest>>;
     getMyStickerRequests(): Promise<Array<StickerRequest>>;
     getMyVehicles(): Promise<Array<Vehicle>>;
     getUnreadMessages(): Promise<Array<Message>>;
@@ -109,9 +98,7 @@ export interface backendInterface {
     getVehicle(vehicleId: VehicleId): Promise<Vehicle | null>;
     isCallerAdmin(): Promise<boolean>;
     markMessageAsRead(messageId: MessageId): Promise<void>;
-    markQrPrintComplete(requestId: bigint): Promise<void>;
     registerVehicle(name: string, description: string, licensePlate: string): Promise<VehicleId>;
-    requestQrPrint(vehicleId: bigint): Promise<bigint>;
     requestSticker(input: StickerRequestInput): Promise<bigint>;
     saveCallerUserProfile(name: string, email: string): Promise<void>;
     updateStickerStatus(stickerRequestId: bigint, newStatus: string, trackingNote: string | null): Promise<void>;

@@ -9,25 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@tanstack/react-router";
-import {
-  Car,
-  ChevronRight,
-  Loader2,
-  LogIn,
-  MessageSquare,
-  QrCode,
-} from "lucide-react";
+import { Car, ChevronRight, LogIn, MessageSquare } from "lucide-react";
 import { motion } from "motion/react";
-import { toast } from "sonner";
-import type { QrPrintRequest, UserProfile, Vehicle } from "../backend.d";
+import type { UserProfile, Vehicle } from "../backend.d";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import {
   useGetCallerUserProfile,
-  useGetMyQrPrintRequests,
   useGetMyVehicles,
   useGetUnreadMessages,
-  useRequestQrPrint,
 } from "../hooks/useQueries";
 
 function UnreadBadge({
@@ -43,60 +33,6 @@ function UnreadBadge({
   );
 }
 
-function RequestQRPrintButton({
-  vehicle,
-  myQrPrintRequests,
-  idx,
-}: {
-  vehicle: Vehicle;
-  myQrPrintRequests: QrPrintRequest[];
-  idx: number;
-}) {
-  const { mutateAsync, isPending } = useRequestQrPrint();
-  const existingRequest = myQrPrintRequests.find(
-    (r) => r.vehicleId === vehicle.id,
-  );
-  const isPending_ = existingRequest?.status === "pending";
-  const isReplacement = !!existingRequest;
-
-  const label = isPending_
-    ? "QR Request Pending"
-    : isReplacement
-      ? "Request Replacement QR ($9.99 + shipping)"
-      : "Request QR Print (Free)";
-
-  async function handleRequest() {
-    try {
-      await mutateAsync(vehicle.id);
-      toast.success("QR print request submitted");
-    } catch {
-      toast.error(
-        isPending_
-          ? "A QR print request is already pending for this vehicle"
-          : "Failed to submit QR print request",
-      );
-    }
-  }
-
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      className="flex-1 border-border text-foreground hover:text-primary hover:border-primary text-xs"
-      onClick={handleRequest}
-      disabled={isPending || isPending_}
-      data-ocid={`dashboard.secondary_button.${idx + 1}`}
-    >
-      {isPending ? (
-        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-      ) : (
-        <QrCode className="w-3.5 h-3.5 mr-1.5" />
-      )}
-      {label}
-    </Button>
-  );
-}
-
 export default function Dashboard() {
   const { identity, login, loginStatus } = useInternetIdentity();
   const isAuthenticated = !!identity;
@@ -109,7 +45,6 @@ export default function Dashboard() {
     isFetched: profileFetched,
     data: userProfile,
   } = useGetCallerUserProfile();
-  const { data: myQrPrintRequests = [] } = useGetMyQrPrintRequests();
 
   usePushNotifications(unreadMessages.length);
 
@@ -140,9 +75,7 @@ export default function Dashboard() {
               className="bg-primary text-white hover:bg-primary/90 w-full rounded-full"
               data-ocid="dashboard.button"
             >
-              {isLoggingIn
-                ? "Signing in\u2026"
-                : "Sign In with Internet Identity"}
+              {isLoggingIn ? "Signing in…" : "Sign In with Internet Identity"}
             </Button>
           </div>
         </main>
@@ -270,7 +203,7 @@ export default function Dashboard() {
                           variant="outline"
                           size="sm"
                           className="border-primary text-primary hover:bg-primary/5 gap-2"
-                          data-ocid="dashboard.button"
+                          data-ocid={`dashboard.secondary_button.${idx + 1}`}
                         >
                           <MessageSquare className="w-4 h-4" />
                           Messages
@@ -283,26 +216,17 @@ export default function Dashboard() {
                     </div>
 
                     {/* QR Actions */}
-                    <div className="flex flex-col gap-2 pt-3 border-t border-border">
-                      <div className="flex items-center gap-2">
-                        <PrintQRButton
-                          vehicleName={vehicle.name}
-                          licensePlate={vehicle.licensePlate}
-                          vehicleId={vehicle.id.toString()}
-                          className="flex-1 border-border text-foreground hover:text-primary hover:border-primary"
-                        />
-                        <RequestStickerDialog
-                          vehicleId={vehicle.id}
-                          vehicleName={vehicle.name}
-                          userProfile={userProfile as UserProfile | null}
-                        />
-                      </div>
-                      <RequestQRPrintButton
-                        vehicle={vehicle}
-                        myQrPrintRequests={
-                          myQrPrintRequests as QrPrintRequest[]
-                        }
-                        idx={idx}
+                    <div className="flex items-center gap-2 pt-3 border-t border-border">
+                      <PrintQRButton
+                        vehicleName={vehicle.name}
+                        licensePlate={vehicle.licensePlate}
+                        vehicleId={vehicle.id.toString()}
+                        className="flex-1 border-border text-foreground hover:text-primary hover:border-primary"
+                      />
+                      <RequestStickerDialog
+                        vehicleId={vehicle.id}
+                        vehicleName={vehicle.name}
+                        userProfile={userProfile as UserProfile | null}
                       />
                     </div>
                   </div>

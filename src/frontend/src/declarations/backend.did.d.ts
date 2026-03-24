@@ -31,15 +31,6 @@ export interface MessageRequest {
   'senderName' : [] | [string],
   'vehicleId' : VehicleId,
 }
-export interface QrPrintRequest {
-  'id' : bigint,
-  'status' : string,
-  'completedAt' : [] | [Time],
-  'owner' : Principal,
-  'isReplacement' : boolean,
-  'requestedAt' : Time,
-  'vehicleId' : VehicleId,
-}
 export interface StickerRequest {
   'id' : bigint,
   'status' : string,
@@ -91,14 +82,12 @@ export interface _SERVICE {
   'deleteVehicle' : ActorMethod<[VehicleId], undefined>,
   'getAdminStats' : ActorMethod<[], AdminStats>,
   'getAllMessagesForVehicle' : ActorMethod<[VehicleId], Array<Message>>,
-  'getAllQrPrintRequests' : ActorMethod<[], Array<QrPrintRequest>>,
   'getAllStickerRequests' : ActorMethod<[], Array<StickerRequest>>,
   'getAllUsers' : ActorMethod<[], Array<UserSummary>>,
   'getAllVehicles' : ActorMethod<[], Array<Vehicle>>,
   'getAllVehiclesForUser' : ActorMethod<[Principal], Array<Vehicle>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getMyQrPrintRequests' : ActorMethod<[], Array<QrPrintRequest>>,
   'getMyStickerRequests' : ActorMethod<[], Array<StickerRequest>>,
   'getMyVehicles' : ActorMethod<[], Array<Vehicle>>,
   'getUnreadMessages' : ActorMethod<[], Array<Message>>,
@@ -108,9 +97,7 @@ export interface _SERVICE {
   'getVehicle' : ActorMethod<[VehicleId], [] | [Vehicle]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'markMessageAsRead' : ActorMethod<[MessageId], undefined>,
-  'markQrPrintComplete' : ActorMethod<[bigint], undefined>,
   'registerVehicle' : ActorMethod<[string, string, string], VehicleId>,
-  'requestQrPrint' : ActorMethod<[bigint], bigint>,
   'requestSticker' : ActorMethod<[StickerRequestInput], bigint>,
   'saveCallerUserProfile' : ActorMethod<[string, string], undefined>,
   'updateStickerStatus' : ActorMethod<

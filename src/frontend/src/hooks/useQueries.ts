@@ -3,7 +3,6 @@ import type {
   AdminStats,
   Message,
   MessageId,
-  QrPrintRequest,
   StickerRequest,
   StickerRequestInput,
   UserSummary,
@@ -200,58 +199,5 @@ export function useUpdateStickerStatus() {
       return actor.updateStickerStatus(id, status, trackingNote);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["allStickerRequests"] }),
-  });
-}
-
-export function useGetAllQrPrintRequests() {
-  const { actor, isFetching } = useActor();
-  return useQuery<QrPrintRequest[]>({
-    queryKey: ["allQrPrintRequests"],
-    queryFn: async () => {
-      if (!actor) throw new Error("Actor not available");
-      return actor.getAllQrPrintRequests();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useGetMyQrPrintRequests() {
-  const { actor, isFetching } = useActor();
-  return useQuery<QrPrintRequest[]>({
-    queryKey: ["myQrPrintRequests"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getMyQrPrintRequests();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useRequestQrPrint() {
-  const { actor } = useActor();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (vehicleId: bigint) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.requestQrPrint(vehicleId);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["myQrPrintRequests"] });
-      qc.invalidateQueries({ queryKey: ["allQrPrintRequests"] });
-    },
-  });
-}
-
-export function useMarkQrPrintComplete() {
-  const { actor } = useActor();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (requestId: bigint) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.markQrPrintComplete(requestId);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["allQrPrintRequests"] });
-    },
   });
 }

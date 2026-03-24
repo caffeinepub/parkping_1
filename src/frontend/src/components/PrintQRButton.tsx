@@ -19,6 +19,7 @@ export function printQRCode({
   vehicleId: string;
 }) {
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(`${window.location.origin}/message/${vehicleId}`)}`;
+  const logoUrl = `${window.location.origin}/assets/uploads/image-019d2097-cfbb-76c4-959f-eb1601816d37-1.png`;
 
   const printWindow = window.open("", "_blank", "width=600,height=700");
   if (!printWindow) return;
@@ -48,12 +49,11 @@ export function printQRCode({
             width: 100%;
             text-align: center;
           }
-          .logo {
-            font-size: 22px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            margin-bottom: 20px;
-            color: #0a1628;
+          .logo-img {
+            width: 160px;
+            height: auto;
+            margin: 0 auto 20px;
+            display: block;
           }
           .qr img {
             width: 220px;
@@ -87,7 +87,7 @@ export function printQRCode({
       </head>
       <body>
         <div class="card">
-          <div class="logo">\uD83C\uDD7F ParkPing</div>
+          <img src="${logoUrl}" alt="ParkPing" class="logo-img" />
           <div class="qr">
             <img src="${qrUrl}" alt="QR Code" />
           </div>

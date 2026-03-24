@@ -12,8 +12,15 @@ import Stripe "stripe/stripe";
 import OutCall "http-outcalls/outcall";
 
 actor {
-  // Authorization
-  let accessControlState = AccessControl.initState();
+  // Stable backup for authorization state
+  stable var authAdminAssigned : Bool = false;
+  stable var authUserRolesEntries : [(Principal, AccessControl.UserRole)] = [];
+
+  // Authorization — restored from stable arrays on upgrade
+  let accessControlState : AccessControl.AccessControlState = {
+    var adminAssigned = authAdminAssigned;
+    userRoles = Map.fromArray<Principal, AccessControl.UserRole>(authUserRolesEntries);
+  };
   include MixinAuthorization(accessControlState);
 
   // Types
@@ -136,21 +143,19 @@ actor {
   stable var stripeSecretKey : Text = "";
   stable var stripeAllowedCountries : [Text] = ["US", "CA", "GB", "AU"];
 
-  // Legacy stable backup arrays — kept for upgrade compatibility only, no longer used.
-  // The Maps below are automatically persisted by --default-persistent-actors.
+  // Stable backup arrays for data maps — serialized in preupgrade, restored in postupgrade.
   stable var vehiclesEntries : [(VehicleId, Vehicle)] = [];
   stable var messagesEntries : [(MessageId, Message)] = [];
   stable var userProfilesEntries : [(Principal, UserProfile)] = [];
   stable var stickerRequestsEntries : [(Nat, StickerRequest)] = [];
   stable var userProfileDetailsEntries : [(Principal, UserProfileDetails)] = [];
 
-  // In-memory maps — automatically persistent via --default-persistent-actors.
-  // No preupgrade/postupgrade hooks needed; the compiler handles serialization.
-  let vehicles = Map.empty<VehicleId, Vehicle>();
-  let messages = Map.empty<MessageId, Message>();
-  let userProfiles = Map.empty<Principal, UserProfile>();
-  let stickerRequests = Map.empty<Nat, StickerRequest>();
-  let userProfileDetails = Map.empty<Principal, UserProfileDetails>();
+  // In-memory maps — restored from stable arrays on upgrade.
+  let vehicles = Map.fromArray<VehicleId, Vehicle>(vehiclesEntries);
+  let messages = Map.fromArray<MessageId, Message>(messagesEntries);
+  let userProfiles = Map.fromArray<Principal, UserProfile>(userProfilesEntries);
+  let stickerRequests = Map.fromArray<Nat, StickerRequest>(stickerRequestsEntries);
+  let userProfileDetails = Map.fromArray<Principal, UserProfileDetails>(userProfileDetailsEntries);
 
   // HTTP transform for Stripe outcalls
   public query func stripeTransform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
@@ -526,5 +531,28 @@ actor {
       Runtime.trap("Unauthorized: Only vehicle owners can request stickers");
     };
     stickerRequests.values().toArray().filter(func(sr) { sr.owner == caller }).sort();
+  };
+
+  // Persist Maps to stable arrays before upgrade
+  system func preupgrade() {
+    // Persist data maps
+    vehiclesEntries := vehicles.toArray();
+    messagesEntries := messages.toArray();
+    userProfilesEntries := userProfiles.toArray();
+    stickerRequestsEntries := stickerRequests.toArray();
+    userProfileDetailsEntries := userProfileDetails.toArray();
+    // Persist authorization state
+    authAdminAssigned := accessControlState.adminAssigned;
+    authUserRolesEntries := accessControlState.userRoles.toArray();
+  };
+
+  // Clear backup arrays after restore to free memory
+  system func postupgrade() {
+    vehiclesEntries := [];
+    messagesEntries := [];
+    userProfilesEntries := [];
+    stickerRequestsEntries := [];
+    userProfileDetailsEntries := [];
+    authUserRolesEntries := [];
   };
 };

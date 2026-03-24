@@ -1,25 +1,26 @@
 # ParkPing
 
 ## Current State
-Admin portal shows sticker requests in a read-only table with status badges. No action to update status.
+All in-memory Maps (vehicles, messages, userProfiles, stickerRequests, userProfileDetails, and the authorization userRoles) were declared with `let` and initialized to empty on every canister upgrade. Stable backup arrays existed but were never populated. The result: all data including user roles was wiped on every deployment.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Backend: `trackingNote` field to `StickerRequest` type
-- Backend: `updateStickerStatus(id, status, trackingNote)` function — admin only
-- Frontend: "Mark as Shipped" button on pending sticker request rows
-- Frontend: Dialog/modal to enter tracking number before marking shipped
-- Frontend: Mutation hook for `updateStickerStatus`
+- `preupgrade` system hook: serializes all Maps (data + auth) to their stable backup arrays before each upgrade
+- `postupgrade` system hook: clears backup arrays after restore to free memory
+- `authAdminAssigned` and `authUserRolesEntries` stable vars to persist authorization state
 
 ### Modify
-- Sticker requests table to include action column with status-change button
+- `accessControlState` initialization: now restores `adminAssigned` and `userRoles` from stable vars instead of starting fresh
+- All five data Maps: now initialized via `Map.fromArray(stableArray, compare)` instead of `Map.empty()`
+- Comments updated to reflect correct persistence strategy
 
 ### Remove
-- Nothing
+- The misleading `--default-persistent-actors` comments (that flag was never configured)
 
 ## Implementation Plan
-1. Add `trackingNote` to `StickerRequest` type and `updateStickerStatus` backend function
-2. Regenerate bindings via Motoko codegen
-3. Add mutation hook in frontend
-4. Update AdminPortal sticker table with action column and ship dialog
+1. Add stable vars for auth state (`authAdminAssigned`, `authUserRolesEntries`) at top of actor
+2. Initialize `accessControlState` using those stable vars
+3. Initialize all 5 data maps using `Map.fromArray` from their stable backup arrays
+4. Add `preupgrade` hook to serialize all maps to stable arrays
+5. Add `postupgrade` hook to clear backup arrays

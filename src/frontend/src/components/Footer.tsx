@@ -120,19 +120,6 @@ export default function Footer() {
                 className="h-8 w-auto bg-white/10 rounded-md px-2 py-1"
               />
             </a>
-            <a
-              href="https://internetcomputer.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="opacity-80 hover:opacity-100 transition-opacity"
-              aria-label="Powered by Internet Computer"
-            >
-              <img
-                src="/assets/uploads/image-019d1d7b-9c40-733e-82e1-7ed8959464d3-2.png"
-                alt="Powered by Internet Computer"
-                className="h-8 w-auto bg-white/10 rounded-md px-2 py-1"
-              />
-            </a>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/40">

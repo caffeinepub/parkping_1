@@ -6,7 +6,7 @@ import Map "mo:core/Map";
 import Principal "mo:core/Principal";
 import Iter "mo:core/Iter";
 import Order "mo:core/Order";
-import Migration "migration";
+
 
 import Text "mo:core/Text";
 
@@ -14,7 +14,7 @@ import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
 // Apply migration with-clause
-(with migration = Migration.run)
+
 actor {
   // Authorization
   let accessControlState = AccessControl.initState();

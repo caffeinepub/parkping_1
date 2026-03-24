@@ -136,42 +136,21 @@ actor {
   stable var stripeSecretKey : Text = "";
   stable var stripeAllowedCountries : [Text] = ["US", "CA", "GB", "AU"];
 
-  // Stable backing arrays — types are frozen; never change field names or types
+  // Legacy stable backup arrays — kept for upgrade compatibility only, no longer used.
+  // The Maps below are automatically persisted by --default-persistent-actors.
   stable var vehiclesEntries : [(VehicleId, Vehicle)] = [];
   stable var messagesEntries : [(MessageId, Message)] = [];
   stable var userProfilesEntries : [(Principal, UserProfile)] = [];
   stable var stickerRequestsEntries : [(Nat, StickerRequest)] = [];
   stable var userProfileDetailsEntries : [(Principal, UserProfileDetails)] = [];
 
-  // In-memory maps
+  // In-memory maps — automatically persistent via --default-persistent-actors.
+  // No preupgrade/postupgrade hooks needed; the compiler handles serialization.
   let vehicles = Map.empty<VehicleId, Vehicle>();
   let messages = Map.empty<MessageId, Message>();
   let userProfiles = Map.empty<Principal, UserProfile>();
   let stickerRequests = Map.empty<Nat, StickerRequest>();
   let userProfileDetails = Map.empty<Principal, UserProfileDetails>();
-
-  // Restore from stable storage on every init/upgrade.
-  // The do-block runs after stable vars are deserialized, so data is always present.
-  do {
-    for ((k, v) in vehiclesEntries.vals()) { vehicles.add(k, v) };
-    for ((k, v) in messagesEntries.vals()) { messages.add(k, v) };
-    for ((k, v) in userProfilesEntries.vals()) { userProfiles.add(k, v) };
-    for ((k, v) in stickerRequestsEntries.vals()) { stickerRequests.add(k, v) };
-    for ((k, v) in userProfileDetailsEntries.vals()) { userProfileDetails.add(k, v) };
-  };
-
-  // Save maps to stable storage before every upgrade.
-  system func preupgrade() {
-    vehiclesEntries := vehicles.entries().toArray();
-    messagesEntries := messages.entries().toArray();
-    userProfilesEntries := userProfiles.entries().toArray();
-    stickerRequestsEntries := stickerRequests.entries().toArray();
-    userProfileDetailsEntries := userProfileDetails.entries().toArray();
-  };
-
-  // NOTE: stable arrays are intentionally NOT cleared after upgrade.
-  // They remain as a safety backup and are simply overwritten on the next preupgrade.
-  system func postupgrade() {};
 
   // HTTP transform for Stripe outcalls
   public query func stripeTransform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {

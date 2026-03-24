@@ -23,6 +23,18 @@ export function useGetMyVehicles() {
   });
 }
 
+export function useGetAllVehicles() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Vehicle[]>({
+    queryKey: ["allVehicles"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllVehicles();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
 export function useGetMessagesForVehicle(vehicleId: VehicleId | null) {
   const { actor, isFetching } = useActor();
   return useQuery<Message[]>({

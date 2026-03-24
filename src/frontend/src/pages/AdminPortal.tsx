@@ -1,5 +1,6 @@
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
+import { printQRCode } from "@/components/PrintQRButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,17 +30,24 @@ import {
   Loader2,
   MessageSquare,
   Package,
+  Printer,
   ShieldOff,
   Users,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import type { AdminStats, StickerRequest, UserSummary } from "../backend.d";
+import type {
+  AdminStats,
+  StickerRequest,
+  UserSummary,
+  Vehicle,
+} from "../backend.d";
 import {
   useGetAdminStats,
   useGetAllStickerRequests,
   useGetAllUsers,
+  useGetAllVehicles,
   useIsCallerAdmin,
   useUpdateStickerStatus,
 } from "../hooks/useQueries";
@@ -179,6 +187,37 @@ function MarkShippedDialog({ req }: { req: StickerRequest }) {
   );
 }
 
+function AdminPrintQRButton({
+  req,
+  vehicleMap,
+}: {
+  req: StickerRequest;
+  vehicleMap: Map<string, Vehicle>;
+}) {
+  const vehicle = vehicleMap.get(req.vehicleId.toString());
+
+  function handlePrint() {
+    printQRCode({
+      vehicleName: vehicle?.name ?? req.name,
+      licensePlate: vehicle?.licensePlate || undefined,
+      vehicleId: req.vehicleId.toString(),
+    });
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={handlePrint}
+      data-ocid="admin.print_qr_button"
+      className="text-xs h-7 px-2 border-primary/30 text-primary hover:bg-teal-light"
+    >
+      <Printer className="w-3 h-3 mr-1" />
+      Print QR
+    </Button>
+  );
+}
+
 function StripeConfigPanel() {
   const { data: isConfigured, isLoading: checkingConfig } =
     useIsStripeConfigured();
@@ -299,6 +338,17 @@ export default function AdminPortal() {
   const { data: users, isLoading: usersLoading } = useGetAllUsers();
   const { data: stickerRequests, isLoading: stickersLoading } =
     useGetAllStickerRequests();
+  const { data: allVehicles } = useGetAllVehicles();
+
+  const vehicleMap = useMemo(() => {
+    const map = new Map<string, Vehicle>();
+    if (allVehicles) {
+      for (const v of allVehicles as Vehicle[]) {
+        map.set(v.id.toString(), v);
+      }
+    }
+    return map;
+  }, [allVehicles]);
 
   if (adminCheckLoading) {
     return (
@@ -522,66 +572,96 @@ export default function AdminPortal() {
                           <TableRow>
                             <TableHead>ID</TableHead>
                             <TableHead>Name</TableHead>
+                            <TableHead>Vehicle</TableHead>
                             <TableHead>Address</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Date</TableHead>
-                            <TableHead>Action</TableHead>
+                            <TableHead>Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {(stickerRequests as StickerRequest[]).map(
-                            (req: StickerRequest, idx: number) => (
-                              <TableRow
-                                key={req.id.toString()}
-                                data-ocid={`admin.row.${idx + 1}`}
-                              >
-                                <TableCell className="font-mono text-xs text-muted-foreground">
-                                  #{req.id.toString()}
-                                </TableCell>
-                                <TableCell className="font-medium text-navy">
-                                  {req.name}
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                  {[req.addressLine1, req.city, req.country]
-                                    .filter(Boolean)
-                                    .join(", ")}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-col gap-1">
-                                    <Badge
-                                      className={
-                                        req.status === "pending"
-                                          ? "bg-amber-100 text-amber-700 border-amber-200"
-                                          : req.status === "shipped"
-                                            ? "bg-teal-light text-primary"
-                                            : "bg-muted text-muted-foreground"
-                                      }
-                                      variant="outline"
-                                    >
-                                      {req.status}
-                                    </Badge>
-                                    {req.trackingNote && (
-                                      <span className="text-xs text-muted-foreground">
-                                        🚚 {req.trackingNote}
+                            (req: StickerRequest, idx: number) => {
+                              const vehicle = vehicleMap.get(
+                                req.vehicleId.toString(),
+                              );
+                              return (
+                                <TableRow
+                                  key={req.id.toString()}
+                                  data-ocid={`admin.row.${idx + 1}`}
+                                >
+                                  <TableCell className="font-mono text-xs text-muted-foreground">
+                                    #{req.id.toString()}
+                                  </TableCell>
+                                  <TableCell className="font-medium text-navy">
+                                    {req.name}
+                                  </TableCell>
+                                  <TableCell>
+                                    {vehicle ? (
+                                      <div className="flex flex-col">
+                                        <span className="text-sm font-medium text-navy">
+                                          {vehicle.name}
+                                        </span>
+                                        {vehicle.licensePlate && (
+                                          <span className="text-xs font-mono text-muted-foreground">
+                                            {vehicle.licensePlate}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground font-mono">
+                                        {req.vehicleId.toString().slice(0, 8)}…
                                       </span>
                                     )}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                  {formatTime(req.requestedAt)}
-                                </TableCell>
-                                <TableCell>
-                                  {req.status === "pending" ? (
-                                    <MarkShippedDialog req={req} />
-                                  ) : req.status === "shipped" ? (
-                                    <span className="inline-flex items-center gap-1 text-xs text-primary font-medium">
-                                      <CheckCircle2 className="w-3.5 h-3.5" />
-                                      Shipped
-                                    </span>
-                                  ) : null}
-                                </TableCell>
-                              </TableRow>
-                            ),
+                                  </TableCell>
+                                  <TableCell className="text-sm text-muted-foreground">
+                                    {[req.addressLine1, req.city, req.country]
+                                      .filter(Boolean)
+                                      .join(", ")}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex flex-col gap-1">
+                                      <Badge
+                                        className={
+                                          req.status === "pending"
+                                            ? "bg-amber-100 text-amber-700 border-amber-200"
+                                            : req.status === "shipped"
+                                              ? "bg-teal-light text-primary"
+                                              : "bg-muted text-muted-foreground"
+                                        }
+                                        variant="outline"
+                                      >
+                                        {req.status}
+                                      </Badge>
+                                      {req.trackingNote && (
+                                        <span className="text-xs text-muted-foreground">
+                                          🚚 {req.trackingNote}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-sm text-muted-foreground">
+                                    {formatTime(req.requestedAt)}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex flex-col gap-1.5">
+                                      <AdminPrintQRButton
+                                        req={req}
+                                        vehicleMap={vehicleMap}
+                                      />
+                                      {req.status === "pending" ? (
+                                        <MarkShippedDialog req={req} />
+                                      ) : req.status === "shipped" ? (
+                                        <span className="inline-flex items-center gap-1 text-xs text-primary font-medium">
+                                          <CheckCircle2 className="w-3.5 h-3.5" />
+                                          Shipped
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            },
                           )}
                         </TableBody>
                       </Table>

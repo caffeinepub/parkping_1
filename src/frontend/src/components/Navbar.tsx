@@ -1,79 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Menu, X } from "lucide-react";
+import { Car, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useIsCallerAdmin } from "../hooks/useQueries";
 
 interface NavbarProps {
   transparent?: boolean;
-}
-
-function ParkPingLogo() {
-  return (
-    <svg
-      width="36"
-      height="36"
-      viewBox="0 0 36 36"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      role="img"
-      aria-labelledby="parkping-logo-title"
-    >
-      <title id="parkping-logo-title">ParkPing logo</title>
-      {/* Background rounded square */}
-      <rect width="36" height="36" rx="10" fill="var(--primary, #2AAEA7)" />
-
-      {/* 3 ping signal arcs radiating from top-right of car */}
-      <path
-        d="M22 9 A8 8 0 0 1 29 16"
-        stroke="white"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        fill="none"
-        opacity="0.5"
-      />
-      <path
-        d="M22 6 A11 11 0 0 1 32 16"
-        stroke="white"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        fill="none"
-        opacity="0.7"
-      />
-      <path
-        d="M22 3 A14 14 0 0 1 35 16"
-        stroke="white"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        fill="none"
-        opacity="0.9"
-      />
-
-      {/* Car body */}
-      <path d="M7 22 L7 19 L10 15 L20 15 L23 19 L23 22 Z" fill="white" />
-      {/* Car roof */}
-      <path d="M11 15 L13 12 L19 12 L21 15" fill="white" />
-      {/* Wheels */}
-      <circle
-        cx="11"
-        cy="22.5"
-        r="2"
-        fill="var(--primary, #2AAEA7)"
-        stroke="white"
-        strokeWidth="1"
-      />
-      <circle
-        cx="19"
-        cy="22.5"
-        r="2"
-        fill="var(--primary, #2AAEA7)"
-        stroke="white"
-        strokeWidth="1"
-      />
-    </svg>
-  );
 }
 
 export default function Navbar({ transparent = false }: NavbarProps) {
@@ -110,7 +44,9 @@ export default function Navbar({ transparent = false }: NavbarProps) {
     >
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2" data-ocid="nav.link">
-          <ParkPingLogo />
+          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
+            <Car className="w-5 h-5 text-white" />
+          </div>
           <span className="font-bold text-xl text-navy">ParkPing</span>
         </Link>
 

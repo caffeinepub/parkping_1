@@ -15,7 +15,7 @@ export default function Footer() {
               <span className="font-bold text-xl">ParkPing</span>
             </div>
             <p className="text-sm text-white/60 max-w-xs leading-relaxed">
-              Get notified. Save a tow. ParkPing lets anyone leave a message for
+              Get notified. Save Money. ParkPing lets anyone leave a message for
               your parked vehicle — no phone numbers, no apps, just a QR code.
             </p>
             <div className="flex items-center gap-3 mt-5">

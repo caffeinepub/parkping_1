@@ -58,18 +58,12 @@ export default function PublicMessagePage() {
               Your message was delivered to the vehicle owner. They'll be
               notified on ParkPing.
             </p>
-            <button
-              type="button"
-              onClick={() => {
-                setSubmitted(false);
-                setMessageText("");
-                setSenderName("");
-              }}
-              className="mt-8 text-sm text-primary font-medium hover:underline"
-              data-ocid="public_message.button"
-            >
-              Send another message
-            </button>
+            <div className="mt-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <QrCode className="w-4 h-4 flex-shrink-0" />
+              <span>
+                To send another message, please scan the QR code again.
+              </span>
+            </div>
           </motion.div>
         ) : (
           <motion.div

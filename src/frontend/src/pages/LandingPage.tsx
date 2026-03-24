@@ -95,7 +95,7 @@ export default function LandingPage() {
               <h1 className="text-5xl sm:text-6xl font-extrabold text-navy leading-tight mb-6">
                 Get notified.
                 <br />
-                <span className="text-primary">Save a tow.</span>
+                <span className="text-primary">Save Money.</span>
               </h1>
               <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
                 ParkPing lets anyone leave you a message about your parked

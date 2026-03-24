@@ -10,6 +10,72 @@ interface NavbarProps {
   transparent?: boolean;
 }
 
+function ParkPingLogo() {
+  return (
+    <svg
+      width="36"
+      height="36"
+      viewBox="0 0 36 36"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-labelledby="parkping-logo-title"
+    >
+      <title id="parkping-logo-title">ParkPing logo</title>
+      {/* Background rounded square */}
+      <rect width="36" height="36" rx="10" fill="var(--primary, #2AAEA7)" />
+
+      {/* 3 ping signal arcs radiating from top-right of car */}
+      <path
+        d="M22 9 A8 8 0 0 1 29 16"
+        stroke="white"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.5"
+      />
+      <path
+        d="M22 6 A11 11 0 0 1 32 16"
+        stroke="white"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.7"
+      />
+      <path
+        d="M22 3 A14 14 0 0 1 35 16"
+        stroke="white"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.9"
+      />
+
+      {/* Car body */}
+      <path d="M7 22 L7 19 L10 15 L20 15 L23 19 L23 22 Z" fill="white" />
+      {/* Car roof */}
+      <path d="M11 15 L13 12 L19 12 L21 15" fill="white" />
+      {/* Wheels */}
+      <circle
+        cx="11"
+        cy="22.5"
+        r="2"
+        fill="var(--primary, #2AAEA7)"
+        stroke="white"
+        strokeWidth="1"
+      />
+      <circle
+        cx="19"
+        cy="22.5"
+        r="2"
+        fill="var(--primary, #2AAEA7)"
+        stroke="white"
+        strokeWidth="1"
+      />
+    </svg>
+  );
+}
+
 export default function Navbar({ transparent = false }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { login, clear, loginStatus, identity } = useInternetIdentity();
@@ -44,13 +110,7 @@ export default function Navbar({ transparent = false }: NavbarProps) {
     >
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2" data-ocid="nav.link">
-          <div className="h-10 flex items-center">
-            <img
-              src="/assets/uploads/image-019d2097-cfbb-76c4-959f-eb1601816d37-1.png"
-              alt="ParkPing logo"
-              className="h-10 w-auto object-contain"
-            />
-          </div>
+          <ParkPingLogo />
           <span className="font-bold text-xl text-navy">ParkPing</span>
         </Link>
 

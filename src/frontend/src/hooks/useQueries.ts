@@ -189,11 +189,25 @@ export function useGetAllUsers() {
 
 export function useRequestSticker() {
   const { actor } = useActor();
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: StickerRequestInput) => {
       if (!actor) throw new Error("Not authenticated");
       return actor.requestSticker(input);
     },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["myStickerRequests"] }),
+  });
+}
+
+export function useGetMyStickerRequests() {
+  const { actor, isFetching } = useActor();
+  return useQuery<StickerRequest[]>({
+    queryKey: ["myStickerRequests"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getMyStickerRequests();
+    },
+    enabled: !!actor && !isFetching,
   });
 }
 

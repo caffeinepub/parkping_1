@@ -10,11 +10,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Package } from "lucide-react";
+import { AlertCircle, Info, Package } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { UserProfile } from "../backend.d";
-import { useRequestSticker } from "../hooks/useQueries";
+import {
+  useGetMyStickerRequests,
+  useRequestSticker,
+} from "../hooks/useQueries";
 
 interface RequestStickerDialogProps {
   vehicleId: bigint;
@@ -41,6 +44,13 @@ export default function RequestStickerDialog({
   });
 
   const { mutateAsync: requestSticker, isPending } = useRequestSticker();
+  const { data: myStickerRequests = [] } = useGetMyStickerRequests();
+
+  // Count requests for this specific vehicle
+  const vehicleRequestCount = myStickerRequests.filter(
+    (r) => r.vehicleId === vehicleId,
+  ).length;
+  const isFree = vehicleRequestCount === 0;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -68,7 +78,9 @@ export default function RequestStickerDialog({
         country: form.country.trim(),
       });
       toast.success(
-        "Your weatherproof sticker will be mailed to your address!",
+        isFree
+          ? "Your free weatherproof sticker will be mailed to your address!"
+          : "Your sticker request has been submitted. You will be invoiced $9.99 + shipping.",
       );
       setOpen(false);
       setForm({
@@ -112,6 +124,37 @@ export default function RequestStickerDialog({
             to your address.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Pricing notice */}
+        <div
+          className={`flex items-start gap-2 rounded-lg px-4 py-3 text-sm ${
+            isFree
+              ? "bg-green-50 border border-green-200 text-green-800"
+              : "bg-amber-50 border border-amber-200 text-amber-800"
+          }`}
+        >
+          {isFree ? (
+            <Info className="w-4 h-4 mt-0.5 shrink-0 text-green-600" />
+          ) : (
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+          )}
+          <div>
+            {isFree ? (
+              <span>
+                <span className="font-semibold">First sticker is free</span> and
+                included with your subscription.
+              </span>
+            ) : (
+              <span>
+                <span className="font-semibold">Replacement sticker:</span>{" "}
+                $9.99 per sticker + shipping and applicable taxes. You have
+                already requested {vehicleRequestCount} sticker
+                {vehicleRequestCount > 1 ? "s" : ""} for this vehicle.
+              </span>
+            )}
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-1">
             <Label htmlFor="sticker-name">Full Name</Label>
@@ -217,7 +260,11 @@ export default function RequestStickerDialog({
               className="bg-primary text-white hover:bg-primary/90"
               data-ocid="sticker.submit_button"
             >
-              {isPending ? "Submitting…" : "Request Sticker"}
+              {isPending
+                ? "Submitting…"
+                : isFree
+                  ? "Request Free Sticker"
+                  : "Request Sticker ($9.99 + shipping)"}
             </Button>
           </DialogFooter>
         </form>

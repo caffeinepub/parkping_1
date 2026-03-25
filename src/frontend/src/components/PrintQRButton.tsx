@@ -19,7 +19,7 @@ export function printQRCode({
   vehicleId: string;
 }) {
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(`${window.location.origin}/message/${vehicleId}`)}`;
-  const logoUrl = `${window.location.origin}/assets/uploads/image-019d2097-cfbb-76c4-959f-eb1601816d37-1.png`;
+  const logoUrl = `${window.location.origin}/assets/uploads/image-019d21e8-c67a-74dd-a137-fcd8265741f1-1.png`;
 
   const printWindow = window.open("", "_blank", "width=600,height=700");
   if (!printWindow) return;
@@ -49,11 +49,22 @@ export function printQRCode({
             width: 100%;
             text-align: center;
           }
+          .logo-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+          }
           .logo-img {
-            width: 160px;
+            width: 120px;
             height: auto;
-            margin: 0 auto 20px;
             display: block;
+          }
+          .logo-url {
+            font-size: 12px;
+            color: #555;
+            margin-top: 4px;
+            letter-spacing: 0.5px;
           }
           .qr img {
             width: 220px;
@@ -75,10 +86,14 @@ export function printQRCode({
           .scan-note {
             margin-top: 16px;
             font-size: 15px;
-            font-weight: 700;
-            color: #0d9488;
+            font-weight: 800;
+            color: #0a1628;
             letter-spacing: 1px;
             text-transform: uppercase;
+            background-color: #FFE600;
+            padding: 6px 14px;
+            border-radius: 6px;
+            display: inline-block;
           }
           @media print {
             body { padding: 20px; }
@@ -87,7 +102,10 @@ export function printQRCode({
       </head>
       <body>
         <div class="card">
-          <img src="${logoUrl}" alt="ParkPing" class="logo-img" />
+          <div class="logo-wrap">
+            <img src="${logoUrl}" alt="ParkPing" class="logo-img" />
+            <span class="logo-url">www.parkping.app</span>
+          </div>
           <div class="qr">
             <img src="${qrUrl}" alt="QR Code" />
           </div>

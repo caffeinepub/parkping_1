@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Car, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useIsCallerAdmin } from "../hooks/useQueries";
@@ -44,9 +44,11 @@ export default function Navbar({ transparent = false }: NavbarProps) {
     >
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2" data-ocid="nav.link">
-          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-            <Car className="w-5 h-5 text-white" />
-          </div>
+          <img
+            src="/assets/uploads/image-019d21e8-c67a-74dd-a137-fcd8265741f1-1.png"
+            alt="ParkPing logo"
+            className="h-10 w-auto"
+          />
           <span className="font-bold text-xl text-navy">ParkPing</span>
         </Link>
 

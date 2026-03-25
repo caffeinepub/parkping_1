@@ -1,6 +1,7 @@
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import { printQRCode } from "@/components/PrintQRButton";
+import QRCodeDisplay from "@/components/QRCodeDisplay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,24 +32,29 @@ import {
   MessageSquare,
   Package,
   Printer,
+  QrCode,
   ShieldOff,
   Users,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type {
   AdminStats,
+  PrintableQRCode,
   StickerRequest,
   UserSummary,
   Vehicle,
 } from "../backend.d";
 import {
+  useGeneratePrintableQRCodes,
   useGetAdminStats,
+  useGetAllPrintableQRCodes,
   useGetAllStickerRequests,
   useGetAllUsers,
   useGetAllVehicles,
   useIsCallerAdmin,
+  useRevokePrintableQRCode,
   useUpdateStickerStatus,
 } from "../hooks/useQueries";
 import {
@@ -218,6 +224,372 @@ function AdminPrintQRButton({
   );
 }
 
+function RevokeQRButton({ code }: { code: PrintableQRCode }) {
+  const [confirm, setConfirm] = useState(false);
+  const { mutateAsync, isPending } = useRevokePrintableQRCode();
+
+  async function handleRevoke() {
+    try {
+      await mutateAsync(code.id);
+      toast.success(`QR code ${code.uniqueIdentifier} revoked.`);
+      setConfirm(false);
+    } catch {
+      toast.error("Failed to revoke QR code.");
+    }
+  }
+
+  if (confirm) {
+    return (
+      <div className="flex items-center gap-1">
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={handleRevoke}
+          disabled={isPending}
+          className="text-xs h-7 px-2"
+          data-ocid="admin.confirm_button"
+        >
+          {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Confirm"}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setConfirm(false)}
+          className="text-xs h-7 px-2"
+          data-ocid="admin.cancel_button"
+        >
+          Cancel
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => setConfirm(true)}
+      className="text-xs h-7 px-2 border-red-200 text-destructive hover:bg-red-50"
+      data-ocid="admin.delete_button"
+    >
+      Revoke
+    </Button>
+  );
+}
+
+function AdminQRCodesTab() {
+  const [quantity, setQuantity] = useState(10);
+  const [prefix, setPrefix] = useState("QR");
+  const [generatedCodes, setGeneratedCodes] = useState<PrintableQRCode[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const { mutateAsync: generate, isPending: generating } =
+    useGeneratePrintableQRCodes();
+  const { data: allCodes, isLoading: codesLoading } =
+    useGetAllPrintableQRCodes();
+
+  async function handleGenerate(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      const codes = await generate({
+        quantity: BigInt(quantity),
+        prefix: prefix.toUpperCase().trim() || "QR",
+      });
+      setGeneratedCodes(codes as PrintableQRCode[]);
+      toast.success(`Generated ${codes.length} QR codes!`);
+    } catch {
+      toast.error("Failed to generate QR codes.");
+    }
+  }
+
+  function handlePrintAll() {
+    if (!printRef.current) return;
+    const printContents = printRef.current.innerHTML;
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`
+      <html>
+        <head>
+          <title>ParkPing QR Codes</title>
+          <style>
+            body { margin: 0; padding: 20px; font-family: monospace; }
+            .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+            .qr-card { display: flex; flex-direction: column; align-items: center; padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; page-break-inside: avoid; }
+            .qr-card img, .qr-card canvas, .qr-card svg { width: 120px; height: 120px; }
+            .identifier { font-size: 12px; font-weight: bold; margin-top: 8px; letter-spacing: 1px; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>${printContents}</body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 500);
+  }
+
+  const filteredCodes = useMemo(() => {
+    if (!allCodes) return [];
+    if (statusFilter === "all") return allCodes as PrintableQRCode[];
+    return (allCodes as PrintableQRCode[]).filter(
+      (c) => c.status === statusFilter,
+    );
+  }, [allCodes, statusFilter]);
+
+  const statusFilters = ["all", "generated", "assigned", "revoked"];
+
+  return (
+    <div className="space-y-6">
+      {/* Generate Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <Card className="border-border shadow-card">
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div className="w-9 h-9 bg-teal-light rounded-xl flex items-center justify-center">
+              <QrCode className="w-5 h-5 text-primary" />
+            </div>
+            <CardTitle className="text-navy">Generate QR Codes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              onSubmit={handleGenerate}
+              className="flex flex-col sm:flex-row gap-4 items-end"
+            >
+              <div className="space-y-1.5 flex-1">
+                <Label htmlFor="qr-quantity" className="text-navy font-medium">
+                  Quantity
+                </Label>
+                <Input
+                  id="qr-quantity"
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={quantity}
+                  onChange={(e) =>
+                    setQuantity(
+                      Math.max(1, Math.min(200, Number(e.target.value))),
+                    )
+                  }
+                  className="w-full"
+                  data-ocid="admin.input"
+                />
+              </div>
+              <div className="space-y-1.5 flex-1">
+                <Label htmlFor="qr-prefix" className="text-navy font-medium">
+                  Prefix{" "}
+                  <span className="text-muted-foreground font-normal text-xs">
+                    (optional)
+                  </span>
+                </Label>
+                <Input
+                  id="qr-prefix"
+                  placeholder="QR"
+                  maxLength={8}
+                  value={prefix}
+                  onChange={(e) => setPrefix(e.target.value.toUpperCase())}
+                  className="font-mono"
+                  data-ocid="admin.input"
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={generating}
+                className="bg-primary text-white hover:bg-primary/90 shrink-0"
+                data-ocid="admin.primary_button"
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <QrCode className="mr-2 h-4 w-4" />
+                    Generate Codes
+                  </>
+                )}
+              </Button>
+            </form>
+
+            {/* Preview */}
+            {generatedCodes.length > 0 && (
+              <div className="mt-8">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-navy">
+                      Generated Codes Preview
+                    </h3>
+                    <Badge className="bg-teal-light text-primary border-primary/20">
+                      {generatedCodes.length} codes
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrintAll}
+                    className="border-primary/40 text-primary hover:bg-teal-light gap-1.5"
+                    data-ocid="admin.secondary_button"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Download / Print All
+                  </Button>
+                </div>
+
+                {/* Hidden print layout */}
+                <div ref={printRef} style={{ display: "none" }}>
+                  <div className="grid">
+                    {generatedCodes.map((code) => (
+                      <div key={code.id.toString()} className="qr-card">
+                        <QRCodeDisplay url={code.qrData} size={120} />
+                        <div className="identifier">
+                          {code.uniqueIdentifier}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Visible preview grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {generatedCodes.map((code) => (
+                    <motion.div
+                      key={code.id.toString()}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="flex flex-col items-center p-3 bg-muted/30 rounded-xl border border-border"
+                    >
+                      <QRCodeDisplay url={code.qrData} size={100} />
+                      <span className="font-mono text-xs font-bold text-navy mt-2 tracking-wider">
+                        {code.uniqueIdentifier}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* All QR Codes Table */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Card className="border-border shadow-card">
+          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-teal-light rounded-xl flex items-center justify-center">
+                <QrCode className="w-5 h-5 text-primary" />
+              </div>
+              <CardTitle className="text-navy">All QR Codes</CardTitle>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {statusFilters.map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setStatusFilter(f)}
+                  data-ocid="admin.tab"
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize ${
+                    statusFilter === f
+                      ? "bg-primary text-white"
+                      : "bg-muted text-muted-foreground hover:bg-teal-light hover:text-primary"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {codesLoading ? (
+              <div className="space-y-3" data-ocid="admin.loading_state">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : filteredCodes.length === 0 ? (
+              <div
+                className="text-center py-12 text-muted-foreground"
+                data-ocid="admin.empty_state"
+              >
+                No QR codes found
+                {statusFilter !== "all" ? ` with status "${statusFilter}"` : ""}
+                .
+              </div>
+            ) : (
+              <Table data-ocid="admin.table">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Identifier</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Assigned To</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCodes.map((code: PrintableQRCode, idx: number) => (
+                    <TableRow
+                      key={code.id.toString()}
+                      data-ocid={`admin.row.${idx + 1}`}
+                    >
+                      <TableCell>
+                        <span className="font-mono text-xs font-bold text-navy tracking-wider bg-muted px-2 py-1 rounded">
+                          {code.uniqueIdentifier}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            code.status === "generated"
+                              ? "bg-amber-100 text-amber-700 border-amber-200"
+                              : code.status === "assigned"
+                                ? "bg-green-100 text-green-700 border-green-200"
+                                : "bg-muted text-muted-foreground"
+                          }
+                        >
+                          {code.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {code.assignedVehicleId !== undefined ? (
+                          `Vehicle #${code.assignedVehicleId.toString()}`
+                        ) : (
+                          <span className="italic">Unassigned</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatTime(code.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        {code.status !== "revoked" ? (
+                          <RevokeQRButton code={code} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">
+                            Revoked
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    </div>
+  );
+}
+
 function StripeConfigPanel() {
   const { data: isConfigured, isLoading: checkingConfig } =
     useIsStripeConfigured();
@@ -357,8 +729,8 @@ export default function AdminPortal() {
         <main className="flex-1 pt-20 pb-16 px-4 sm:px-6">
           <div className="max-w-5xl mx-auto mt-6">
             <Skeleton className="h-10 w-48 mb-8" />
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-10">
-              {[1, 2, 3, 4].map((i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-6 mb-10">
+              {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-32 rounded-2xl" />
               ))}
             </div>
@@ -416,7 +788,7 @@ export default function AdminPortal() {
           </motion.div>
 
           {/* Stat Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-10">
             <StatCard
               title="Total Users"
               value={(stats as AdminStats | undefined)?.totalUsers}
@@ -441,6 +813,12 @@ export default function AdminPortal() {
               icon={Package}
               delay={0.18}
             />
+            <StatCard
+              title="Printable QR Codes"
+              value={(stats as AdminStats | undefined)?.totalPrintableQRCodes}
+              icon={QrCode}
+              delay={0.24}
+            />
           </div>
 
           {/* Tabs */}
@@ -451,6 +829,9 @@ export default function AdminPortal() {
               </TabsTrigger>
               <TabsTrigger value="stickers" data-ocid="admin.tab">
                 Sticker Requests
+              </TabsTrigger>
+              <TabsTrigger value="qrcodes" data-ocid="admin.tab">
+                QR Codes
               </TabsTrigger>
               <TabsTrigger value="stripe" data-ocid="admin.tab">
                 Stripe
@@ -669,6 +1050,10 @@ export default function AdminPortal() {
                   </CardContent>
                 </Card>
               </motion.div>
+            </TabsContent>
+
+            <TabsContent value="qrcodes">
+              <AdminQRCodesTab />
             </TabsContent>
 
             <TabsContent value="stripe">

@@ -3,6 +3,7 @@ import type {
   AdminStats,
   Message,
   MessageId,
+  PrintableQRCode,
   StickerRequest,
   StickerRequestInput,
   UserSummary,
@@ -262,5 +263,83 @@ export function useUpdateCallerUserProfile() {
       return actor.saveCallerUserProfile(data.name, data.email);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["currentUserProfile"] }),
+  });
+}
+
+// Generate batch of printable QR codes (admin)
+export function useGeneratePrintableQRCodes() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      quantity,
+      prefix,
+    }: { quantity: bigint; prefix: string }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.generatePrintableQRCodes(quantity, prefix);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["allPrintableQRCodes"] });
+      qc.invalidateQueries({ queryKey: ["adminStats"] });
+    },
+  });
+}
+
+// Get all printable QR codes (admin)
+export function useGetAllPrintableQRCodes() {
+  const { actor, isFetching } = useActor();
+  return useQuery<PrintableQRCode[]>({
+    queryKey: ["allPrintableQRCodes"],
+    queryFn: async () => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.getAllPrintableQRCodes();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// Assign a printable QR code to a vehicle (user)
+export function useAssignPrintableQRCode() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      uniqueIdentifier,
+      vehicleId,
+    }: { uniqueIdentifier: string; vehicleId: VehicleId }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.assignPrintableQRCode(uniqueIdentifier, vehicleId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["allPrintableQRCodes"] });
+      qc.invalidateQueries({ queryKey: ["assignedQR"] });
+    },
+  });
+}
+
+// Revoke a printable QR code (admin)
+export function useRevokePrintableQRCode() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.revokePrintableQRCode(id);
+    },
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["allPrintableQRCodes"] }),
+  });
+}
+
+// Get assigned QR for a specific vehicle
+export function useGetAssignedQRForVehicle(vehicleId: VehicleId | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery<PrintableQRCode | null>({
+    queryKey: ["assignedQR", vehicleId?.toString()],
+    queryFn: async () => {
+      if (!actor || vehicleId === null) return null;
+      return actor.getAssignedQRForVehicle(vehicleId);
+    },
+    enabled: !!actor && !isFetching && vehicleId !== null,
   });
 }

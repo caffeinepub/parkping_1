@@ -13,6 +13,7 @@ import type { Principal } from '@icp-sdk/core/principal';
 export interface AdminStats {
   'totalVehicles' : bigint,
   'totalStickerRequests' : bigint,
+  'totalPrintableQRCodes' : bigint,
   'totalMessages' : bigint,
   'totalUsers' : bigint,
 }
@@ -31,8 +32,26 @@ export interface MessageRequest {
   'senderName' : [] | [string],
   'vehicleId' : VehicleId,
 }
+export interface PrintableQRCode {
+  'id' : PrintableQRCodeId,
+  'status' : string,
+  'assignedAt' : [] | [Time],
+  'generatedBy' : Principal,
+  'createdAt' : Time,
+  'uniqueIdentifier' : string,
+  'assignedVehicleId' : [] | [VehicleId],
+  'qrData' : string,
+}
+export type PrintableQRCodeId = bigint;
+export interface ShoppingItem {
+  'productName' : string,
+  'currency' : string,
+  'quantity' : bigint,
+  'priceInCents' : bigint,
+  'productDescription' : string,
+}
 export interface StickerRequest {
-  'id' : bigint,
+  'id' : StickerRequestId,
   'status' : string,
   'trackingNote' : [] | [string],
   'postcode' : string,
@@ -46,6 +65,7 @@ export interface StickerRequest {
   'requestedAt' : Time,
   'vehicleId' : VehicleId,
 }
+export type StickerRequestId = bigint;
 export interface StickerRequestInput {
   'postcode' : string,
   'country' : string,
@@ -56,8 +76,35 @@ export interface StickerRequestInput {
   'addressLine2' : string,
   'vehicleId' : VehicleId,
 }
+export interface StripeConfiguration {
+  'allowedCountries' : Array<string>,
+  'secretKey' : string,
+}
+export type StripeSessionStatus = {
+    'completed' : { 'userPrincipal' : [] | [string], 'response' : string }
+  } |
+  { 'failed' : { 'error' : string } };
 export type Time = bigint;
-export interface UserProfile { 'name' : string, 'email' : string }
+export interface TransformationInput {
+  'context' : Uint8Array,
+  'response' : http_request_result,
+}
+export interface TransformationOutput {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
+export interface UserProfileFull {
+  'postcode' : [] | [string],
+  'country' : [] | [string],
+  'city' : [] | [string],
+  'name' : string,
+  'stateProvince' : [] | [string],
+  'email' : string,
+  'addressLine1' : [] | [string],
+  'addressLine2' : [] | [string],
+  'phone' : [] | [string],
+}
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
@@ -74,34 +121,70 @@ export interface Vehicle {
   'description' : string,
 }
 export type VehicleId = bigint;
+export interface http_header { 'value' : string, 'name' : string }
+export interface http_request_result {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addMessage' : ActorMethod<[MessageRequest], MessageId>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'assignPrintableQRCode' : ActorMethod<[string, VehicleId], undefined>,
+  'createCheckoutSession' : ActorMethod<
+    [Array<ShoppingItem>, string, string],
+    string
+  >,
   'deleteMessage' : ActorMethod<[MessageId], undefined>,
   'deleteVehicle' : ActorMethod<[VehicleId], undefined>,
+  'generatePrintableQRCodes' : ActorMethod<
+    [bigint, string],
+    Array<PrintableQRCode>
+  >,
   'getAdminStats' : ActorMethod<[], AdminStats>,
   'getAllMessagesForVehicle' : ActorMethod<[VehicleId], Array<Message>>,
+  'getAllPrintableQRCodes' : ActorMethod<[], Array<PrintableQRCode>>,
   'getAllStickerRequests' : ActorMethod<[], Array<StickerRequest>>,
   'getAllUsers' : ActorMethod<[], Array<UserSummary>>,
   'getAllVehicles' : ActorMethod<[], Array<Vehicle>>,
   'getAllVehiclesForUser' : ActorMethod<[Principal], Array<Vehicle>>,
-  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
+  'getAssignedQRForVehicle' : ActorMethod<[VehicleId], [] | [PrintableQRCode]>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfileFull]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getMyStickerRequests' : ActorMethod<[], Array<StickerRequest>>,
   'getMyVehicles' : ActorMethod<[], Array<Vehicle>>,
+  'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
   'getUnreadMessages' : ActorMethod<[], Array<Message>>,
   'getUnreadMessagesForOwner' : ActorMethod<[Principal], Array<Message>>,
   'getUnreadMessagesForVehicle' : ActorMethod<[VehicleId], Array<Message>>,
-  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfileFull]>,
   'getVehicle' : ActorMethod<[VehicleId], [] | [Vehicle]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'isStripeConfigured' : ActorMethod<[], boolean>,
   'markMessageAsRead' : ActorMethod<[MessageId], undefined>,
   'registerVehicle' : ActorMethod<[string, string, string], VehicleId>,
-  'requestSticker' : ActorMethod<[StickerRequestInput], bigint>,
+  'requestSticker' : ActorMethod<[StickerRequestInput], StickerRequestId>,
+  'revokePrintableQRCode' : ActorMethod<[PrintableQRCodeId], undefined>,
   'saveCallerUserProfile' : ActorMethod<[string, string], undefined>,
+  'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
+  'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
+  'updateCallerUserProfile' : ActorMethod<
+    [
+      string,
+      string,
+      [] | [string],
+      [] | [string],
+      [] | [string],
+      [] | [string],
+      [] | [string],
+      [] | [string],
+      [] | [string],
+    ],
+    undefined
+  >,
   'updateStickerStatus' : ActorMethod<
-    [bigint, string, [] | [string]],
+    [StickerRequestId, string, [] | [string]],
     undefined
   >,
 }

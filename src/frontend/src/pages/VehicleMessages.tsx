@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
-import type { Message, UserProfile } from "../backend.d";
+import type { Message, UserProfileFull as UserProfile } from "../backend.d";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useDeleteMessage,

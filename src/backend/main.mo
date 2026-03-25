@@ -5,6 +5,9 @@ import Map "mo:core/Map";
 import Principal "mo:core/Principal";
 import Order "mo:core/Order";
 import Text "mo:core/Text";
+import Array "mo:core/Array";
+import Iter "mo:core/Iter";
+import Int "mo:core/Int";
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
@@ -26,6 +29,8 @@ actor {
   // Types
   type VehicleId = Nat;
   type MessageId = Nat;
+  type StickerRequestId = Nat;
+  type PrintableQRCodeId = Nat;
 
   type UserProfile = {
     name : Text;
@@ -79,7 +84,7 @@ actor {
   };
 
   type StickerRequest = {
-    id : Nat;
+    id : StickerRequestId;
     vehicleId : VehicleId;
     owner : Principal;
     name : Text;
@@ -110,12 +115,29 @@ actor {
     totalVehicles : Nat;
     totalMessages : Nat;
     totalStickerRequests : Nat;
+    totalPrintableQRCodes : Nat;
   };
 
   type UserSummary = {
     principal : Principal;
     name : ?Text;
     vehicleCount : Nat;
+  };
+
+  type PrintableQRCode = {
+    id : PrintableQRCodeId;
+    uniqueIdentifier : Text;
+    qrData : Text;
+    status : Text;
+    assignedVehicleId : ?VehicleId;
+    assignedAt : ?Time.Time;
+    generatedBy : Principal;
+    createdAt : Time.Time;
+  };
+
+  type PrintableQRCodeInput = {
+    prefix : Text;
+    quantity : Nat;
   };
 
   module Message {
@@ -136,10 +158,17 @@ actor {
     };
   };
 
+  module PrintableQRCode {
+    public func compare(q1 : PrintableQRCode, q2 : PrintableQRCode) : Order.Order {
+      Nat.compare(q1.id, q2.id);
+    };
+  };
+
   // Counters and config
   stable var nextVehicleId : Nat = 0;
   stable var nextMessageId : Nat = 0;
   stable var nextStickerRequestId : Nat = 0;
+  stable var nextPrintableQRCodeId : Nat = 0;
   stable var stripeSecretKey : Text = "";
   stable var stripeAllowedCountries : [Text] = ["US", "CA", "GB", "AU"];
 
@@ -147,32 +176,41 @@ actor {
   stable var vehiclesEntries : [(VehicleId, Vehicle)] = [];
   stable var messagesEntries : [(MessageId, Message)] = [];
   stable var userProfilesEntries : [(Principal, UserProfile)] = [];
-  stable var stickerRequestsEntries : [(Nat, StickerRequest)] = [];
+  stable var stickerRequestsEntries : [(StickerRequestId, StickerRequest)] = [];
   stable var userProfileDetailsEntries : [(Principal, UserProfileDetails)] = [];
+  stable var printableQRCodesEntries : [(PrintableQRCodeId, PrintableQRCode)] = [];
 
   // In-memory maps — restored from stable arrays on upgrade.
   let vehicles = Map.fromArray<VehicleId, Vehicle>(vehiclesEntries);
   let messages = Map.fromArray<MessageId, Message>(messagesEntries);
   let userProfiles = Map.fromArray<Principal, UserProfile>(userProfilesEntries);
-  let stickerRequests = Map.fromArray<Nat, StickerRequest>(stickerRequestsEntries);
+  let stickerRequests = Map.fromArray<StickerRequestId, StickerRequest>(stickerRequestsEntries);
   let userProfileDetails = Map.fromArray<Principal, UserProfileDetails>(userProfileDetailsEntries);
+  let printableQRCodes = Map.fromArray<PrintableQRCodeId, PrintableQRCode>(printableQRCodesEntries);
 
   // HTTP transform for Stripe outcalls
-  public query func stripeTransform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+  public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
     OutCall.transform(input);
   };
 
   // Stripe configuration
-  public shared ({ caller }) func setStripeConfiguration(secretKey : Text, allowedCountries : [Text]) : async () {
+  public shared ({ caller }) func setStripeConfiguration(config : Stripe.StripeConfiguration) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admin can configure Stripe");
     };
-    stripeSecretKey := secretKey;
-    stripeAllowedCountries := allowedCountries;
+    stripeSecretKey := config.secretKey;
+    stripeAllowedCountries := config.allowedCountries;
   };
 
   public query ({ caller }) func isStripeConfigured() : async Bool {
     stripeSecretKey != "";
+  };
+
+  func getStripeConfiguration() : Stripe.StripeConfiguration {
+    {
+      secretKey = stripeSecretKey;
+      allowedCountries = stripeAllowedCountries;
+    };
   };
 
   // Create Stripe checkout session
@@ -180,11 +218,12 @@ actor {
     if (stripeSecretKey == "") {
       Runtime.trap("Stripe is not configured");
     };
-    let config : Stripe.StripeConfiguration = {
-      secretKey = stripeSecretKey;
-      allowedCountries = stripeAllowedCountries;
-    };
-    await Stripe.createCheckoutSession(config, caller, items, successUrl, cancelUrl, stripeTransform);
+    await Stripe.createCheckoutSession(getStripeConfiguration(), caller, items, successUrl, cancelUrl, transform);
+  };
+
+  // Stripe payment status
+  public func getStripeSessionStatus(sessionId : Text) : async Stripe.StripeSessionStatus {
+    await Stripe.getSessionStatus(getStripeConfiguration(), sessionId, transform);
   };
 
   // Vehicle registration
@@ -228,6 +267,9 @@ actor {
 
   // Delete vehicle
   public shared ({ caller }) func deleteVehicle(vehicleId : VehicleId) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Must be authenticated to delete own vehicle");
+    };
     let vehicle = switch (vehicles.get(vehicleId)) {
       case (null) { Runtime.trap("Vehicle not found!") };
       case (?vehicle) { vehicle };
@@ -373,6 +415,7 @@ actor {
       totalVehicles = vehicles.size();
       totalMessages = messages.size();
       totalStickerRequests = stickerRequests.size();
+      totalPrintableQRCodes = printableQRCodes.size();
     };
   };
 
@@ -465,7 +508,7 @@ actor {
   };
 
   // Sticker request
-  public shared ({ caller }) func requestSticker(input : StickerRequestInput) : async Nat {
+  public shared ({ caller }) func requestSticker(input : StickerRequestInput) : async StickerRequestId {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only vehicle owners can request stickers");
     };
@@ -498,7 +541,7 @@ actor {
   };
 
   // Update sticker status - admin only
-  public shared ({ caller }) func updateStickerStatus(stickerRequestId : Nat, newStatus : Text, trackingNote : ?Text) : async () {
+  public shared ({ caller }) func updateStickerStatus(stickerRequestId : StickerRequestId, newStatus : Text, trackingNote : ?Text) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admin can update sticker status");
     };
@@ -533,15 +576,159 @@ actor {
     stickerRequests.values().toArray().filter(func(sr) { sr.owner == caller }).sort();
   };
 
+  // QR code batch generation
+  public shared ({ caller }) func generatePrintableQRCodes(quantity : Nat, prefix : Text) : async [PrintableQRCode] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admin can generate QR codes");
+    };
+    if (quantity == 0 or quantity > 200) {
+      Runtime.trap("Can only generate between 1 and 200 QR codes at a time");
+    };
+    if (prefix.size() > 5) {
+      Runtime.trap("Prefix must be 5 characters or less");
+    };
+
+    let newQRCodes = Array.tabulate<PrintableQRCode>(quantity, func(i) {
+      let id = nextPrintableQRCodeId + i;
+      let uniqueIdentifier = generateUniqueIdentifier(id, prefix);
+      {
+        id;
+        uniqueIdentifier = uniqueIdentifier;
+        qrData = "https://parkping.app/assign?code=" # uniqueIdentifier;
+        status = "generated";
+        assignedVehicleId = null;
+        assignedAt = null;
+        generatedBy = caller;
+        createdAt = Time.now();
+      };
+    });
+
+    let entries = Array.tabulate(quantity, func(i) { (nextPrintableQRCodeId + i, newQRCodes[i]) });
+    for ((id, code) in entries.values()) {
+      printableQRCodes.add(id, code);
+    };
+
+    nextPrintableQRCodeId += quantity;
+    newQRCodes;
+  };
+
+  func generateUniqueIdentifier(id : Nat, prefix : Text) : Text {
+    let charsPool = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let poolSize = charsPool.size();
+
+    let basePrefix = if (prefix == "") { "QR" } else { prefix };
+    let firstPart = basePrefix # "-";
+    let seed = id + (Time.now() % 100000000);
+
+    var result = firstPart;
+
+    for (j in Nat.range(0, 6)) {
+      let index : Nat = (seed + (j * 17)).toNat() % poolSize;
+      let charArray = charsPool.toArray();
+      let char = charArray[index];
+      result #= char.toText();
+    };
+
+    if (isUniqueIdentifier(result)) { result } else { generateUniqueIdentifier(id + 1, prefix) };
+  };
+
+  func isUniqueIdentifier(identifier : Text) : Bool {
+    not printableQRCodes.values().toArray().any(func(code) { code.uniqueIdentifier == identifier });
+  };
+
+  // Assign QR code to vehicle
+  public shared ({ caller }) func assignPrintableQRCode(uniqueIdentifier : Text, vehicleId : VehicleId) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can assign QR codes");
+    };
+
+    let qrCode = printableQRCodes.values().toArray().find(func(code) { code.uniqueIdentifier == uniqueIdentifier });
+    switch (qrCode) {
+      case (null) { Runtime.trap("Invalid QR code") };
+      case (?qrCode) {
+        if (qrCode.status != "generated") {
+          Runtime.trap("Cannot assign QR code - status not eligible");
+        };
+
+        let assignedVehicle = vehicles.get(vehicleId);
+        switch (assignedVehicle) {
+          case (null) {
+            Runtime.trap("Vehicle not found!");
+          };
+          case (?vehicle) {
+            if (vehicle.owner != caller) {
+              Runtime.trap("Unauthorized: Only the vehicle owner can assign QR codes");
+            };
+
+            let updatedQRCode : PrintableQRCode = {
+              id = qrCode.id;
+              uniqueIdentifier = qrCode.uniqueIdentifier;
+              qrData = qrCode.qrData;
+              status = "assigned";
+              assignedVehicleId = ?vehicleId;
+              assignedAt = ?Time.now();
+              generatedBy = qrCode.generatedBy;
+              createdAt = qrCode.createdAt;
+            };
+            printableQRCodes.add(qrCode.id, updatedQRCode);
+          };
+        };
+      };
+    };
+  };
+
+  // Revoke QR code
+  public shared ({ caller }) func revokePrintableQRCode(id : PrintableQRCodeId) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admin can revoke QR codes");
+    };
+    switch (printableQRCodes.get(id)) {
+      case (null) { Runtime.trap("QR code not found") };
+      case (?qrCode) {
+        let updatedQRCode : PrintableQRCode = {
+          id = qrCode.id;
+          uniqueIdentifier = qrCode.uniqueIdentifier;
+          qrData = qrCode.qrData;
+          status = "revoked";
+          assignedVehicleId = null;
+          assignedAt = null;
+          generatedBy = qrCode.generatedBy;
+          createdAt = qrCode.createdAt;
+        };
+        printableQRCodes.add(id, updatedQRCode);
+      };
+    };
+  };
+
+  // Get all printable QR codes - admin only
+  public query ({ caller }) func getAllPrintableQRCodes() : async [PrintableQRCode] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admin can view all QR codes");
+    };
+    printableQRCodes.values().toArray().sort();
+  };
+
+  // Get assigned QR code for vehicle
+  public query ({ caller }) func getAssignedQRForVehicle(vehicleId : VehicleId) : async ?PrintableQRCode {
+    switch (vehicles.get(vehicleId)) {
+      case (null) { Runtime.trap("Vehicle not found!") };
+      case (?vehicle) {
+        if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+          Runtime.trap("Unauthorized: Only the vehicle owner or admin can view QR codes");
+        };
+        printableQRCodes.values().toArray().find(func(qrCode) { qrCode.assignedVehicleId == ?vehicleId and qrCode.status == "assigned" });
+      };
+    };
+  };
+
   // Persist Maps to stable arrays before upgrade
   system func preupgrade() {
-    // Persist data maps
     vehiclesEntries := vehicles.toArray();
     messagesEntries := messages.toArray();
     userProfilesEntries := userProfiles.toArray();
     stickerRequestsEntries := stickerRequests.toArray();
     userProfileDetailsEntries := userProfileDetails.toArray();
-    // Persist authorization state
+    printableQRCodesEntries := printableQRCodes.toArray();
     authAdminAssigned := accessControlState.adminAssigned;
     authUserRolesEntries := accessControlState.userRoles.toArray();
   };
@@ -553,6 +740,7 @@ actor {
     userProfilesEntries := [];
     stickerRequestsEntries := [];
     userProfileDetailsEntries := [];
+    printableQRCodesEntries := [];
     authUserRolesEntries := [];
   };
 };

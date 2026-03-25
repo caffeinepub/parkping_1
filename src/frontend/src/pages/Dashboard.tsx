@@ -1,4 +1,5 @@
 import AddVehicleDialog from "@/components/AddVehicleDialog";
+import AssignQRDialog, { AssignedQRSection } from "@/components/AssignQRDialog";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import PrintQRButton from "@/components/PrintQRButton";
@@ -25,7 +26,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { UserProfile, Vehicle } from "../backend.d";
+import type { UserProfileFull, Vehicle } from "../backend.d";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import {
@@ -52,7 +53,7 @@ function orNull(val: string): string | null {
   return val.trim() === "" ? null : val.trim();
 }
 
-function ProfileEditor({ profile }: { profile: UserProfile }) {
+function ProfileEditor({ profile }: { profile: UserProfileFull }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(profile.name ?? "");
   const [email, setEmail] = useState(profile.email ?? "");
@@ -405,7 +406,7 @@ export default function Dashboard() {
               <h1 className="text-3xl font-bold text-navy">Your Vehicles</h1>
               <p className="text-muted-foreground mt-1">
                 {userProfile
-                  ? `Welcome back, ${(userProfile as UserProfile).name}`
+                  ? `Welcome back, ${(userProfile as UserProfileFull).name}`
                   : "Manage your registered vehicles and QR codes"}
               </p>
             </div>
@@ -544,9 +545,16 @@ export default function Dashboard() {
                       <RequestStickerDialog
                         vehicleId={vehicle.id}
                         vehicleName={vehicle.name}
-                        userProfile={userProfile as UserProfile | null}
+                        userProfile={userProfile as UserProfileFull | null}
+                      />
+                      <AssignQRDialog
+                        vehicles={vehicles as Vehicle[]}
+                        defaultVehicleId={vehicle.id}
                       />
                     </div>
+
+                    {/* Assigned QR Section */}
+                    <AssignedQRSection vehicleId={vehicle.id} />
                   </div>
                 </motion.div>
               ))}
@@ -557,7 +565,7 @@ export default function Dashboard() {
           {isAuthenticated &&
             userProfile !== null &&
             userProfile !== undefined && (
-              <ProfileEditor profile={userProfile as UserProfile} />
+              <ProfileEditor profile={userProfile as UserProfileFull} />
             )}
         </div>
       </main>

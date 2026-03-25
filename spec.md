@@ -1,26 +1,50 @@
 # ParkPing
 
 ## Current State
-All in-memory Maps (vehicles, messages, userProfiles, stickerRequests, userProfileDetails, and the authorization userRoles) were declared with `let` and initialized to empty on every canister upgrade. Stable backup arrays existed but were never populated. The result: all data including user roles was wiped on every deployment.
+ParkPing is a decentralized ICP app for vehicle owners to receive messages via QR codes. Existing backend has: Vehicle, Message, StickerRequest entities, authorization (admin/user), Stripe, HTTP outcalls. Frontend has: LandingPage, Dashboard, AdminPortal, VehicleMessages, PublicMessagePage.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `preupgrade` system hook: serializes all Maps (data + auth) to their stable backup arrays before each upgrade
-- `postupgrade` system hook: clears backup arrays after restore to free memory
-- `authAdminAssigned` and `authUserRolesEntries` stable vars to persist authorization state
+- **PrintableQRCode entity** in Motoko backend:
+  - `id: Nat`
+  - `uniqueIdentifier: Text` (e.g. QR-A7X9K2, unique, no confusing chars 0/O/1/I)
+  - `qrData: Text` (URL: `https://parkping.app/assign?code=<identifier>`)
+  - `status: Text` (generated | assigned | revoked)
+  - `assignedVehicleId: ?VehicleId`
+  - `assignedAt: ?Time`
+  - `generatedBy: Principal`
+  - `createdAt: Time`
+- **Backend functions:**
+  - `generatePrintableQRCodes(quantity: Nat, prefix: Text): [PrintableQRCode]` — admin only, generates batch with unique identifiers
+  - `getAllPrintableQRCodes(): [PrintableQRCode]` — admin only
+  - `assignPrintableQRCode(uniqueIdentifier: Text, vehicleId: VehicleId): ()` — user only, validates QR exists + status=generated, user owns vehicle
+  - `revokePrintableQRCode(id: Nat): ()` — admin only
+- **Admin QR Codes tab** in AdminPortal:
+  - Form: quantity input + optional prefix + "Generate" button
+  - Preview grid of generated codes with QR images
+  - Filterable table of all codes by status
+  - Download as PDF (print layout, multiple per page) or individual PNGs
+- **User: Assign Printed QR Code** in Dashboard vehicle cards:
+  - Button "Assign Printed QR Code" on each vehicle card
+  - Modal with identifier input + vehicle dropdown
+  - On success: show QR code image + identifier on vehicle card
+- **AdminStats** updated to include `totalPrintableQRCodes: Nat`
 
 ### Modify
-- `accessControlState` initialization: now restores `adminAssigned` and `userRoles` from stable vars instead of starting fresh
-- All five data Maps: now initialized via `Map.fromArray(stableArray, compare)` instead of `Map.empty()`
-- Comments updated to reflect correct persistence strategy
+- `main.mo`: add PrintableQRCode map, counter, stable backup, preupgrade/postupgrade
+- `AdminPortal.tsx`: add "QR Codes" tab
+- `Dashboard.tsx`: add "Assign Printed QR Code" button + modal per vehicle card
+- `useQueries.ts`: add hooks for new backend functions
+- `backend.d.ts`: updated automatically by bindgen
 
 ### Remove
-- The misleading `--default-persistent-actors` comments (that flag was never configured)
+- Nothing removed
 
 ## Implementation Plan
-1. Add stable vars for auth state (`authAdminAssigned`, `authUserRolesEntries`) at top of actor
-2. Initialize `accessControlState` using those stable vars
-3. Initialize all 5 data maps using `Map.fromArray` from their stable backup arrays
-4. Add `preupgrade` hook to serialize all maps to stable arrays
-5. Add `postupgrade` hook to clear backup arrays
+1. Update `main.mo` with PrintableQRCode type, identifier generation logic, and all 4 new functions; update AdminStats; add stable backup arrays
+2. Regenerate backend bindings via `generate_motoko_code`
+3. Frontend: Add `useGeneratePrintableQRCodes`, `useGetAllPrintableQRCodes`, `useAssignPrintableQRCode`, `useRevokePrintableQRCode` hooks
+4. Frontend: Add Admin QR Codes tab in AdminPortal with generate form, preview grid, status-filtered table, PDF download
+5. Frontend: Add AssignPrintableQRDialog component; integrate into Dashboard vehicle cards
+6. Validate and deploy

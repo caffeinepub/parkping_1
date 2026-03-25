@@ -90,9 +90,46 @@ export class ExternalBlob {
     }
 }
 export type VehicleId = bigint;
+export interface TransformationOutput {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
+}
 export type Time = bigint;
+export interface MessageRequest {
+    message: string;
+    senderName?: string;
+    vehicleId: VehicleId;
+}
+export interface PrintableQRCode {
+    id: PrintableQRCodeId;
+    status: string;
+    assignedAt?: Time;
+    generatedBy: Principal;
+    createdAt: Time;
+    uniqueIdentifier: string;
+    assignedVehicleId?: VehicleId;
+    qrData: string;
+}
+export interface Vehicle {
+    id: VehicleId;
+    licensePlate: string;
+    owner: Principal;
+    name: string;
+    description: string;
+}
+export interface http_header {
+    value: string;
+    name: string;
+}
+export interface http_request_result {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
+}
+export type StickerRequestId = bigint;
 export interface StickerRequest {
-    id: bigint;
+    id: StickerRequestId;
     status: string;
     trackingNote?: string;
     postcode: string;
@@ -106,12 +143,23 @@ export interface StickerRequest {
     requestedAt: Time;
     vehicleId: VehicleId;
 }
+export interface ShoppingItem {
+    productName: string;
+    currency: string;
+    quantity: bigint;
+    priceInCents: bigint;
+    productDescription: string;
+}
+export type MessageId = bigint;
 export interface UserSummary {
     principal: Principal;
     name?: string;
     vehicleCount: bigint;
 }
-export type MessageId = bigint;
+export interface TransformationInput {
+    context: Uint8Array;
+    response: http_request_result;
+}
 export interface StickerRequestInput {
     postcode: string;
     country: string;
@@ -131,27 +179,40 @@ export interface Message {
     senderName?: string;
     vehicleId: VehicleId;
 }
-export interface MessageRequest {
-    message: string;
-    senderName?: string;
-    vehicleId: VehicleId;
+export type StripeSessionStatus = {
+    __kind__: "completed";
+    completed: {
+        userPrincipal?: string;
+        response: string;
+    };
+} | {
+    __kind__: "failed";
+    failed: {
+        error: string;
+    };
+};
+export interface StripeConfiguration {
+    allowedCountries: Array<string>;
+    secretKey: string;
+}
+export type PrintableQRCodeId = bigint;
+export interface UserProfileFull {
+    postcode?: string;
+    country?: string;
+    city?: string;
+    name: string;
+    stateProvince?: string;
+    email: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    phone?: string;
 }
 export interface AdminStats {
     totalVehicles: bigint;
     totalStickerRequests: bigint;
+    totalPrintableQRCodes: bigint;
     totalMessages: bigint;
     totalUsers: bigint;
-}
-export interface Vehicle {
-    id: VehicleId;
-    licensePlate: string;
-    owner: Principal;
-    name: string;
-    description: string;
-}
-export interface UserProfile {
-    name: string;
-    email: string;
 }
 export enum UserRole {
     admin = "admin",
@@ -162,31 +223,42 @@ export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     addMessage(input: MessageRequest): Promise<MessageId>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    assignPrintableQRCode(uniqueIdentifier: string, vehicleId: VehicleId): Promise<void>;
+    createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
     deleteMessage(messageId: MessageId): Promise<void>;
     deleteVehicle(vehicleId: VehicleId): Promise<void>;
+    generatePrintableQRCodes(quantity: bigint, prefix: string): Promise<Array<PrintableQRCode>>;
     getAdminStats(): Promise<AdminStats>;
     getAllMessagesForVehicle(vehicleId: VehicleId): Promise<Array<Message>>;
+    getAllPrintableQRCodes(): Promise<Array<PrintableQRCode>>;
     getAllStickerRequests(): Promise<Array<StickerRequest>>;
     getAllUsers(): Promise<Array<UserSummary>>;
     getAllVehicles(): Promise<Array<Vehicle>>;
     getAllVehiclesForUser(user: Principal): Promise<Array<Vehicle>>;
-    getCallerUserProfile(): Promise<UserProfile | null>;
+    getAssignedQRForVehicle(vehicleId: VehicleId): Promise<PrintableQRCode | null>;
+    getCallerUserProfile(): Promise<UserProfileFull | null>;
     getCallerUserRole(): Promise<UserRole>;
     getMyStickerRequests(): Promise<Array<StickerRequest>>;
     getMyVehicles(): Promise<Array<Vehicle>>;
+    getStripeSessionStatus(sessionId: string): Promise<StripeSessionStatus>;
     getUnreadMessages(): Promise<Array<Message>>;
     getUnreadMessagesForOwner(owner: Principal): Promise<Array<Message>>;
     getUnreadMessagesForVehicle(vehicleId: VehicleId): Promise<Array<Message>>;
-    getUserProfile(user: Principal): Promise<UserProfile | null>;
+    getUserProfile(user: Principal): Promise<UserProfileFull | null>;
     getVehicle(vehicleId: VehicleId): Promise<Vehicle | null>;
     isCallerAdmin(): Promise<boolean>;
+    isStripeConfigured(): Promise<boolean>;
     markMessageAsRead(messageId: MessageId): Promise<void>;
     registerVehicle(name: string, description: string, licensePlate: string): Promise<VehicleId>;
-    requestSticker(input: StickerRequestInput): Promise<bigint>;
+    requestSticker(input: StickerRequestInput): Promise<StickerRequestId>;
+    revokePrintableQRCode(id: PrintableQRCodeId): Promise<void>;
     saveCallerUserProfile(name: string, email: string): Promise<void>;
-    updateStickerStatus(stickerRequestId: bigint, newStatus: string, trackingNote: string | null): Promise<void>;
+    setStripeConfiguration(config: StripeConfiguration): Promise<void>;
+    transform(input: TransformationInput): Promise<TransformationOutput>;
+    updateCallerUserProfile(name: string, email: string, phone: string | null, addressLine1: string | null, addressLine2: string | null, city: string | null, stateProvince: string | null, postcode: string | null, country: string | null): Promise<void>;
+    updateStickerStatus(stickerRequestId: StickerRequestId, newStatus: string, trackingNote: string | null): Promise<void>;
 }
-import type { Message as _Message, MessageId as _MessageId, MessageRequest as _MessageRequest, StickerRequest as _StickerRequest, Time as _Time, UserProfile as _UserProfile, UserRole as _UserRole, UserSummary as _UserSummary, Vehicle as _Vehicle, VehicleId as _VehicleId } from "./declarations/backend.did.d.ts";
+import type { Message as _Message, MessageId as _MessageId, MessageRequest as _MessageRequest, PrintableQRCode as _PrintableQRCode, PrintableQRCodeId as _PrintableQRCodeId, StickerRequest as _StickerRequest, StickerRequestId as _StickerRequestId, StripeSessionStatus as _StripeSessionStatus, Time as _Time, UserProfileFull as _UserProfileFull, UserRole as _UserRole, UserSummary as _UserSummary, Vehicle as _Vehicle, VehicleId as _VehicleId } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -231,6 +303,34 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async assignPrintableQRCode(arg0: string, arg1: VehicleId): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.assignPrintableQRCode(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.assignPrintableQRCode(arg0, arg1);
+            return result;
+        }
+    }
+    async createCheckoutSession(arg0: Array<ShoppingItem>, arg1: string, arg2: string): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createCheckoutSession(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createCheckoutSession(arg0, arg1, arg2);
+            return result;
+        }
+    }
     async deleteMessage(arg0: MessageId): Promise<void> {
         if (this.processError) {
             try {
@@ -259,6 +359,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async generatePrintableQRCodes(arg0: bigint, arg1: string): Promise<Array<PrintableQRCode>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.generatePrintableQRCodes(arg0, arg1);
+                return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.generatePrintableQRCodes(arg0, arg1);
+            return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getAdminStats(): Promise<AdminStats> {
         if (this.processError) {
             try {
@@ -277,13 +391,27 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getAllMessagesForVehicle(arg0);
-                return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAllMessagesForVehicle(arg0);
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getAllPrintableQRCodes(): Promise<Array<PrintableQRCode>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllPrintableQRCodes();
+                return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllPrintableQRCodes();
             return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
         }
     }
@@ -291,28 +419,28 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getAllStickerRequests();
-                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAllStickerRequests();
-            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAllUsers(): Promise<Array<UserSummary>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getAllUsers();
-                return from_candid_vec_n13(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n18(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAllUsers();
-            return from_candid_vec_n13(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n18(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAllVehicles(): Promise<Array<Vehicle>> {
@@ -343,46 +471,60 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async getCallerUserProfile(): Promise<UserProfile | null> {
+    async getAssignedQRForVehicle(arg0: VehicleId): Promise<PrintableQRCode | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAssignedQRForVehicle(arg0);
+                return from_candid_opt_n21(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAssignedQRForVehicle(arg0);
+            return from_candid_opt_n21(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getCallerUserProfile(): Promise<UserProfileFull | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n17(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n25(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n17(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n25(this._uploadFile, this._downloadFile, result);
         }
     }
     async getMyStickerRequests(): Promise<Array<StickerRequest>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getMyStickerRequests();
-                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getMyStickerRequests();
-            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
         }
     }
     async getMyVehicles(): Promise<Array<Vehicle>> {
@@ -399,74 +541,88 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getStripeSessionStatus(arg0: string): Promise<StripeSessionStatus> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getStripeSessionStatus(arg0);
+                return from_candid_StripeSessionStatus_n27(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getStripeSessionStatus(arg0);
+            return from_candid_StripeSessionStatus_n27(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getUnreadMessages(): Promise<Array<Message>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getUnreadMessages();
-                return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUnreadMessages();
-            return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
         }
     }
     async getUnreadMessagesForOwner(arg0: Principal): Promise<Array<Message>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getUnreadMessagesForOwner(arg0);
-                return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUnreadMessagesForOwner(arg0);
-            return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
         }
     }
     async getUnreadMessagesForVehicle(arg0: VehicleId): Promise<Array<Message>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getUnreadMessagesForVehicle(arg0);
-                return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUnreadMessagesForVehicle(arg0);
-            return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
+    async getUserProfile(arg0: Principal): Promise<UserProfileFull | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getUserProfile(arg0);
-                return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUserProfile(arg0);
-            return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
         }
     }
     async getVehicle(arg0: VehicleId): Promise<Vehicle | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getVehicle(arg0);
-                return from_candid_opt_n19(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n30(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getVehicle(arg0);
-            return from_candid_opt_n19(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n30(this._uploadFile, this._downloadFile, result);
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -480,6 +636,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.isCallerAdmin();
+            return result;
+        }
+    }
+    async isStripeConfigured(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isStripeConfigured();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.isStripeConfigured();
             return result;
         }
     }
@@ -511,7 +681,7 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async requestSticker(arg0: StickerRequestInput): Promise<bigint> {
+    async requestSticker(arg0: StickerRequestInput): Promise<StickerRequestId> {
         if (this.processError) {
             try {
                 const result = await this.actor.requestSticker(arg0);
@@ -522,6 +692,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.requestSticker(arg0);
+            return result;
+        }
+    }
+    async revokePrintableQRCode(arg0: PrintableQRCodeId): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.revokePrintableQRCode(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.revokePrintableQRCode(arg0);
             return result;
         }
     }
@@ -539,106 +723,106 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async updateStickerStatus(arg0: bigint, arg1: string, arg2: string | null): Promise<void> {
+    async setStripeConfiguration(arg0: StripeConfiguration): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateStickerStatus(arg0, arg1, to_candid_opt_n20(this._uploadFile, this._downloadFile, arg2));
+                const result = await this.actor.setStripeConfiguration(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateStickerStatus(arg0, arg1, to_candid_opt_n20(this._uploadFile, this._downloadFile, arg2));
+            const result = await this.actor.setStripeConfiguration(arg0);
+            return result;
+        }
+    }
+    async transform(arg0: TransformationInput): Promise<TransformationOutput> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.transform(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.transform(arg0);
+            return result;
+        }
+    }
+    async updateCallerUserProfile(arg0: string, arg1: string, arg2: string | null, arg3: string | null, arg4: string | null, arg5: string | null, arg6: string | null, arg7: string | null, arg8: string | null): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateCallerUserProfile(arg0, arg1, to_candid_opt_n31(this._uploadFile, this._downloadFile, arg2), to_candid_opt_n31(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n31(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n31(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n31(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n31(this._uploadFile, this._downloadFile, arg7), to_candid_opt_n31(this._uploadFile, this._downloadFile, arg8));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateCallerUserProfile(arg0, arg1, to_candid_opt_n31(this._uploadFile, this._downloadFile, arg2), to_candid_opt_n31(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n31(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n31(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n31(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n31(this._uploadFile, this._downloadFile, arg7), to_candid_opt_n31(this._uploadFile, this._downloadFile, arg8));
+            return result;
+        }
+    }
+    async updateStickerStatus(arg0: StickerRequestId, arg1: string, arg2: string | null): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateStickerStatus(arg0, arg1, to_candid_opt_n31(this._uploadFile, this._downloadFile, arg2));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateStickerStatus(arg0, arg1, to_candid_opt_n31(this._uploadFile, this._downloadFile, arg2));
             return result;
         }
     }
 }
-function from_candid_Message_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Message): Message {
-    return from_candid_record_n7(_uploadFile, _downloadFile, value);
-}
-function from_candid_StickerRequest_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _StickerRequest): StickerRequest {
+function from_candid_Message_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Message): Message {
     return from_candid_record_n12(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserRole_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n18(_uploadFile, _downloadFile, value);
+function from_candid_PrintableQRCode_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PrintableQRCode): PrintableQRCode {
+    return from_candid_record_n7(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserSummary_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserSummary): UserSummary {
-    return from_candid_record_n15(_uploadFile, _downloadFile, value);
+function from_candid_StickerRequest_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _StickerRequest): StickerRequest {
+    return from_candid_record_n17(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+function from_candid_StripeSessionStatus_n27(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _StripeSessionStatus): StripeSessionStatus {
+    return from_candid_variant_n28(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserProfileFull_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserProfileFull): UserProfileFull {
+    return from_candid_record_n24(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserRole_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n26(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserSummary_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserSummary): UserSummary {
+    return from_candid_record_n20(_uploadFile, _downloadFile, value);
+}
+function from_candid_opt_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [Principal]): Principal | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Vehicle]): Vehicle | null {
+function from_candid_opt_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [Principal]): Principal | null {
+function from_candid_opt_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_PrintableQRCode]): PrintableQRCode | null {
+    return value.length === 0 ? null : from_candid_PrintableQRCode_n6(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfileFull]): UserProfileFull | null {
+    return value.length === 0 ? null : from_candid_UserProfileFull_n23(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Vehicle]): Vehicle | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
+function from_candid_opt_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Time]): Time | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_VehicleId]): VehicleId | null {
     return value.length === 0 ? null : value[0];
 }
 function from_candid_record_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    id: bigint;
-    status: string;
-    trackingNote: [] | [string];
-    postcode: string;
-    country: string;
-    owner: Principal;
-    city: string;
-    name: string;
-    stateProvince: string;
-    addressLine1: string;
-    addressLine2: string;
-    requestedAt: _Time;
-    vehicleId: _VehicleId;
-}): {
-    id: bigint;
-    status: string;
-    trackingNote?: string;
-    postcode: string;
-    country: string;
-    owner: Principal;
-    city: string;
-    name: string;
-    stateProvince: string;
-    addressLine1: string;
-    addressLine2: string;
-    requestedAt: Time;
-    vehicleId: VehicleId;
-} {
-    return {
-        id: value.id,
-        status: value.status,
-        trackingNote: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.trackingNote)),
-        postcode: value.postcode,
-        country: value.country,
-        owner: value.owner,
-        city: value.city,
-        name: value.name,
-        stateProvince: value.stateProvince,
-        addressLine1: value.addressLine1,
-        addressLine2: value.addressLine2,
-        requestedAt: value.requestedAt,
-        vehicleId: value.vehicleId
-    };
-}
-function from_candid_record_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    principal: Principal;
-    name: [] | [string];
-    vehicleCount: bigint;
-}): {
-    principal: Principal;
-    name?: string;
-    vehicleCount: bigint;
-} {
-    return {
-        principal: value.principal,
-        name: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.name)),
-        vehicleCount: value.vehicleCount
-    };
-}
-function from_candid_record_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: _MessageId;
     isRead: boolean;
     sender: [] | [Principal];
@@ -658,14 +842,149 @@ function from_candid_record_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint
     return {
         id: value.id,
         isRead: value.isRead,
-        sender: record_opt_to_undefined(from_candid_opt_n8(_uploadFile, _downloadFile, value.sender)),
+        sender: record_opt_to_undefined(from_candid_opt_n13(_uploadFile, _downloadFile, value.sender)),
         message: value.message,
         timestamp: value.timestamp,
-        senderName: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.senderName)),
+        senderName: record_opt_to_undefined(from_candid_opt_n14(_uploadFile, _downloadFile, value.senderName)),
         vehicleId: value.vehicleId
     };
 }
-function from_candid_variant_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: _StickerRequestId;
+    status: string;
+    trackingNote: [] | [string];
+    postcode: string;
+    country: string;
+    owner: Principal;
+    city: string;
+    name: string;
+    stateProvince: string;
+    addressLine1: string;
+    addressLine2: string;
+    requestedAt: _Time;
+    vehicleId: _VehicleId;
+}): {
+    id: StickerRequestId;
+    status: string;
+    trackingNote?: string;
+    postcode: string;
+    country: string;
+    owner: Principal;
+    city: string;
+    name: string;
+    stateProvince: string;
+    addressLine1: string;
+    addressLine2: string;
+    requestedAt: Time;
+    vehicleId: VehicleId;
+} {
+    return {
+        id: value.id,
+        status: value.status,
+        trackingNote: record_opt_to_undefined(from_candid_opt_n14(_uploadFile, _downloadFile, value.trackingNote)),
+        postcode: value.postcode,
+        country: value.country,
+        owner: value.owner,
+        city: value.city,
+        name: value.name,
+        stateProvince: value.stateProvince,
+        addressLine1: value.addressLine1,
+        addressLine2: value.addressLine2,
+        requestedAt: value.requestedAt,
+        vehicleId: value.vehicleId
+    };
+}
+function from_candid_record_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    principal: Principal;
+    name: [] | [string];
+    vehicleCount: bigint;
+}): {
+    principal: Principal;
+    name?: string;
+    vehicleCount: bigint;
+} {
+    return {
+        principal: value.principal,
+        name: record_opt_to_undefined(from_candid_opt_n14(_uploadFile, _downloadFile, value.name)),
+        vehicleCount: value.vehicleCount
+    };
+}
+function from_candid_record_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    postcode: [] | [string];
+    country: [] | [string];
+    city: [] | [string];
+    name: string;
+    stateProvince: [] | [string];
+    email: string;
+    addressLine1: [] | [string];
+    addressLine2: [] | [string];
+    phone: [] | [string];
+}): {
+    postcode?: string;
+    country?: string;
+    city?: string;
+    name: string;
+    stateProvince?: string;
+    email: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    phone?: string;
+} {
+    return {
+        postcode: record_opt_to_undefined(from_candid_opt_n14(_uploadFile, _downloadFile, value.postcode)),
+        country: record_opt_to_undefined(from_candid_opt_n14(_uploadFile, _downloadFile, value.country)),
+        city: record_opt_to_undefined(from_candid_opt_n14(_uploadFile, _downloadFile, value.city)),
+        name: value.name,
+        stateProvince: record_opt_to_undefined(from_candid_opt_n14(_uploadFile, _downloadFile, value.stateProvince)),
+        email: value.email,
+        addressLine1: record_opt_to_undefined(from_candid_opt_n14(_uploadFile, _downloadFile, value.addressLine1)),
+        addressLine2: record_opt_to_undefined(from_candid_opt_n14(_uploadFile, _downloadFile, value.addressLine2)),
+        phone: record_opt_to_undefined(from_candid_opt_n14(_uploadFile, _downloadFile, value.phone))
+    };
+}
+function from_candid_record_n29(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    userPrincipal: [] | [string];
+    response: string;
+}): {
+    userPrincipal?: string;
+    response: string;
+} {
+    return {
+        userPrincipal: record_opt_to_undefined(from_candid_opt_n14(_uploadFile, _downloadFile, value.userPrincipal)),
+        response: value.response
+    };
+}
+function from_candid_record_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: _PrintableQRCodeId;
+    status: string;
+    assignedAt: [] | [_Time];
+    generatedBy: Principal;
+    createdAt: _Time;
+    uniqueIdentifier: string;
+    assignedVehicleId: [] | [_VehicleId];
+    qrData: string;
+}): {
+    id: PrintableQRCodeId;
+    status: string;
+    assignedAt?: Time;
+    generatedBy: Principal;
+    createdAt: Time;
+    uniqueIdentifier: string;
+    assignedVehicleId?: VehicleId;
+    qrData: string;
+} {
+    return {
+        id: value.id,
+        status: value.status,
+        assignedAt: record_opt_to_undefined(from_candid_opt_n8(_uploadFile, _downloadFile, value.assignedAt)),
+        generatedBy: value.generatedBy,
+        createdAt: value.createdAt,
+        uniqueIdentifier: value.uniqueIdentifier,
+        assignedVehicleId: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.assignedVehicleId)),
+        qrData: value.qrData
+    };
+}
+function from_candid_variant_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -674,14 +993,46 @@ function from_candid_variant_n18(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_vec_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_StickerRequest>): Array<StickerRequest> {
-    return value.map((x)=>from_candid_StickerRequest_n11(_uploadFile, _downloadFile, x));
+function from_candid_variant_n28(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    completed: {
+        userPrincipal: [] | [string];
+        response: string;
+    };
+} | {
+    failed: {
+        error: string;
+    };
+}): {
+    __kind__: "completed";
+    completed: {
+        userPrincipal?: string;
+        response: string;
+    };
+} | {
+    __kind__: "failed";
+    failed: {
+        error: string;
+    };
+} {
+    return "completed" in value ? {
+        __kind__: "completed",
+        completed: from_candid_record_n29(_uploadFile, _downloadFile, value.completed)
+    } : "failed" in value ? {
+        __kind__: "failed",
+        failed: value.failed
+    } : value;
 }
-function from_candid_vec_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_UserSummary>): Array<UserSummary> {
-    return value.map((x)=>from_candid_UserSummary_n14(_uploadFile, _downloadFile, x));
+function from_candid_vec_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Message>): Array<Message> {
+    return value.map((x)=>from_candid_Message_n11(_uploadFile, _downloadFile, x));
 }
-function from_candid_vec_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Message>): Array<Message> {
-    return value.map((x)=>from_candid_Message_n6(_uploadFile, _downloadFile, x));
+function from_candid_vec_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_StickerRequest>): Array<StickerRequest> {
+    return value.map((x)=>from_candid_StickerRequest_n16(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_UserSummary>): Array<UserSummary> {
+    return value.map((x)=>from_candid_UserSummary_n19(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_PrintableQRCode>): Array<PrintableQRCode> {
+    return value.map((x)=>from_candid_PrintableQRCode_n6(_uploadFile, _downloadFile, x));
 }
 function to_candid_MessageRequest_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: MessageRequest): _MessageRequest {
     return to_candid_record_n2(_uploadFile, _downloadFile, value);
@@ -689,7 +1040,7 @@ function to_candid_MessageRequest_n1(_uploadFile: (file: ExternalBlob) => Promis
 function to_candid_UserRole_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
     return to_candid_variant_n4(_uploadFile, _downloadFile, value);
 }
-function to_candid_opt_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
+function to_candid_opt_n31(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
     return value === null ? candid_none() : candid_some(value);
 }
 function to_candid_record_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {

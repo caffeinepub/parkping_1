@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { AlertCircle, Info, Package } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { UserProfile } from "../backend.d";
+import type { UserProfileFull as UserProfile } from "../backend.d";
 import {
   useGetMyStickerRequests,
   useRequestSticker,

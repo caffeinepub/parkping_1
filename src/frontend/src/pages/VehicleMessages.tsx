@@ -16,6 +16,7 @@ import {
   Check,
   Key,
   Laptop,
+  MapPin,
   MessageSquare,
   PawPrint,
   Tag,
@@ -29,6 +30,7 @@ import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useDeleteMessage,
   useGetCallerUserProfile,
+  useGetMessageLocation,
   useGetMessagesForVehicle,
   useGetMyVehicles,
   useGetVehicleCategories,
@@ -63,6 +65,24 @@ function formatTime(timestamp: bigint) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(ms));
+}
+
+function MessageLocationLink({ messageId }: { messageId: bigint }) {
+  const { data: location } = useGetMessageLocation(messageId);
+  if (!location) return null;
+  const mapsUrl = `https://www.google.com/maps?q=${location.lat},${location.lng}`;
+  return (
+    <a
+      href={mapsUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+      data-ocid="vehicle_messages.link"
+    >
+      <MapPin className="w-3 h-3" />
+      View location
+    </a>
+  );
 }
 
 export default function VehicleMessages() {
@@ -222,6 +242,7 @@ export default function VehicleMessages() {
                             <p className="text-sm text-foreground leading-relaxed">
                               {msg.message}
                             </p>
+                            <MessageLocationLink messageId={msg.id} />
                             <p className="text-xs text-muted-foreground mt-2">
                               {formatTime(msg.timestamp)}
                             </p>

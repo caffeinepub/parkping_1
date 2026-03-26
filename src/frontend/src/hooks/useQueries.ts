@@ -145,16 +145,22 @@ export function useAddMessage() {
       vehicleId,
       senderName,
       messageText,
+      locationLat,
+      locationLng,
     }: {
       vehicleId: VehicleId;
       senderName: string | null;
       messageText: string;
+      locationLat?: string | null;
+      locationLng?: string | null;
     }) => {
       if (!actor) throw new Error("Not available");
       return actor.addMessage({
         vehicleId,
         senderName: senderName ?? undefined,
         message: messageText,
+        locationLat: locationLat ?? null,
+        locationLng: locationLng ?? null,
       });
     },
   });
@@ -379,5 +385,59 @@ export function useGetAssignedQRForVehicle(vehicleId: VehicleId | null) {
       return actor.getAssignedQRForVehicle(vehicleId);
     },
     enabled: !!actor && !isFetching && vehicleId !== null,
+  });
+}
+
+// Set contact info for an object (owner only)
+export function useSetObjectContactInfo() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async ({
+      vehicleId,
+      contactName,
+      contactPhone,
+      contactPublic,
+    }: {
+      vehicleId: bigint;
+      contactName: string | null;
+      contactPhone: string | null;
+      contactPublic: boolean;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.setObjectContactInfo(
+        vehicleId,
+        contactName,
+        contactPhone,
+        contactPublic,
+      );
+    },
+  });
+}
+
+// Get contact info for an object (owner only)
+export function useGetObjectContactInfo(vehicleId: bigint | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["objectContactInfo", vehicleId?.toString()],
+    queryFn: async () => {
+      if (!actor || vehicleId === null) return null;
+      const result = await actor.getObjectContactInfo(vehicleId);
+      return result;
+    },
+    enabled: !!actor && !isFetching && vehicleId !== null,
+  });
+}
+
+// Get message location (owner only)
+export function useGetMessageLocation(messageId: bigint | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["messageLocation", messageId?.toString()],
+    queryFn: async () => {
+      if (!actor || messageId === null) return null;
+      const result = await actor.getMessageLocation(messageId);
+      return result;
+    },
+    enabled: !!actor && !isFetching && messageId !== null,
   });
 }

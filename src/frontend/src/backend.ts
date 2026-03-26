@@ -100,6 +100,8 @@ export interface MessageRequest {
     message: string;
     senderName?: string;
     vehicleId: VehicleId;
+    locationLat?: string | null;
+    locationLng?: string | null;
 }
 export interface PrintableQRCode {
     id: PrintableQRCodeId;
@@ -259,6 +261,10 @@ export interface backendInterface {
     transform(input: TransformationInput): Promise<TransformationOutput>;
     updateCallerUserProfile(name: string, email: string, phone: string | null, addressLine1: string | null, addressLine2: string | null, city: string | null, stateProvince: string | null, postcode: string | null, country: string | null): Promise<void>;
     updateStickerStatus(stickerRequestId: StickerRequestId, newStatus: string, trackingNote: string | null): Promise<void>;
+    setObjectContactInfo(vehicleId: VehicleId, contactName: string | null, contactPhone: string | null, contactPublic: boolean): Promise<void>;
+    getObjectContactInfo(vehicleId: VehicleId): Promise<{ contactName: [] | [string]; contactPhone: [] | [string]; contactPublic: boolean; } | null>;
+    getObjectPublicInfo(vehicleId: VehicleId): Promise<{ name: string; category: string; contactName: [] | [string]; contactPhone: [] | [string]; } | null>;
+    getMessageLocation(messageId: MessageId): Promise<{ lat: string; lng: string; } | null>;
 }
 import type { Message as _Message, MessageId as _MessageId, MessageRequest as _MessageRequest, PrintableQRCode as _PrintableQRCode, PrintableQRCodeId as _PrintableQRCodeId, StickerRequest as _StickerRequest, StickerRequestId as _StickerRequestId, StripeSessionStatus as _StripeSessionStatus, Time as _Time, UserProfileFull as _UserProfileFull, UserRole as _UserRole, UserSummary as _UserSummary, Vehicle as _Vehicle, VehicleId as _VehicleId } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -811,6 +817,65 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+
+    async setObjectContactInfo(vehicleId: VehicleId, contactName: string | null, contactPhone: string | null, contactPublic: boolean): Promise<void> {
+        const cn: [] | [string] = contactName ? candid_some(contactName) : candid_none();
+        const cp: [] | [string] = contactPhone ? candid_some(contactPhone) : candid_none();
+        if (this.processError) {
+            try {
+                const result = await this.actor.setObjectContactInfo(vehicleId, cn, cp, contactPublic);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setObjectContactInfo(vehicleId, cn, cp, contactPublic);
+            return result;
+        }
+    }
+    async getObjectPublicInfo(vehicleId: VehicleId): Promise<{ name: string; category: string; contactName: [] | [string]; contactPhone: [] | [string]; } | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getObjectPublicInfo(vehicleId);
+                return result[0] ?? null;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getObjectPublicInfo(vehicleId);
+            return result[0] ?? null;
+        }
+    }
+    async getObjectContactInfo(vehicleId: VehicleId): Promise<{ contactName: [] | [string]; contactPhone: [] | [string]; contactPublic: boolean; } | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getObjectContactInfo(vehicleId);
+                return result[0] ?? null;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getObjectContactInfo(vehicleId);
+            return result[0] ?? null;
+        }
+    }
+    async getMessageLocation(messageId: MessageId): Promise<{ lat: string; lng: string; } | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMessageLocation(messageId);
+                return result[0] ?? null;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMessageLocation(messageId);
+            return result[0] ?? null;
+        }
+    }
 }
 function from_candid_Message_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Message): Message {
     return from_candid_record_n12(_uploadFile, _downloadFile, value);
@@ -1079,15 +1144,21 @@ function to_candid_record_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
     message: string;
     senderName?: string;
     vehicleId: VehicleId;
+    locationLat?: string | null;
+    locationLng?: string | null;
 }): {
     message: string;
     senderName: [] | [string];
     vehicleId: _VehicleId;
+    locationLat: [] | [string];
+    locationLng: [] | [string];
 } {
     return {
         message: value.message,
         senderName: value.senderName ? candid_some(value.senderName) : candid_none(),
-        vehicleId: value.vehicleId
+        vehicleId: value.vehicleId,
+        locationLat: value.locationLat ? candid_some(value.locationLat) : candid_none(),
+        locationLng: value.locationLng ? candid_some(value.locationLng) : candid_none()
     };
 }
 function to_candid_variant_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {

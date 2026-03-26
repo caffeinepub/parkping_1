@@ -59,7 +59,7 @@ actor {
     country : ?Text;
   };
 
-  // Vehicle represents any physical object (category stored separately for upgrade compatibility)
+  // Vehicle represents any physical object
   type Vehicle = {
     id : VehicleId;
     owner : Principal;
@@ -82,6 +82,26 @@ actor {
     vehicleId : VehicleId;
     senderName : ?Text;
     message : Text;
+    locationLat : ?Text;
+    locationLng : ?Text;
+  };
+
+  type MessageLocation = {
+    lat : Text;
+    lng : Text;
+  };
+
+  type VehicleContactInfo = {
+    contactName : ?Text;
+    contactPhone : ?Text;
+    contactPublic : Bool;
+  };
+
+  type ObjectPublicInfo = {
+    name : Text;
+    category : Text;
+    contactName : ?Text;
+    contactPhone : ?Text;
   };
 
   type StickerRequest = {
@@ -181,6 +201,8 @@ actor {
   stable var userProfileDetailsEntries : [(Principal, UserProfileDetails)] = [];
   stable var printableQRCodesEntries : [(PrintableQRCodeId, PrintableQRCode)] = [];
   stable var vehicleCategoriesEntries : [(VehicleId, Text)] = [];
+  stable var vehicleContactInfoEntries : [(VehicleId, VehicleContactInfo)] = [];
+  stable var messageLocationsEntries : [(MessageId, MessageLocation)] = [];
 
   // In-memory maps
   let vehicles = Map.fromArray<VehicleId, Vehicle>(vehiclesEntries);
@@ -190,6 +212,8 @@ actor {
   let userProfileDetails = Map.fromArray<Principal, UserProfileDetails>(userProfileDetailsEntries);
   let printableQRCodes = Map.fromArray<PrintableQRCodeId, PrintableQRCode>(printableQRCodesEntries);
   let vehicleCategories = Map.fromArray<VehicleId, Text>(vehicleCategoriesEntries);
+  let vehicleContactInfoMap = Map.fromArray<VehicleId, VehicleContactInfo>(vehicleContactInfoEntries);
+  let messageLocationsMap = Map.fromArray<MessageId, MessageLocation>(messageLocationsEntries);
 
   // HTTP transform for Stripe outcalls
   public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
@@ -272,6 +296,60 @@ actor {
     vehicleId;
   };
 
+  // Set or update contact info for an object
+  public shared ({ caller }) func setObjectContactInfo(
+    vehicleId : VehicleId,
+    contactName : ?Text,
+    contactPhone : ?Text,
+    contactPublic : Bool
+  ) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized");
+    };
+    let vehicle = switch (vehicles.get(vehicleId)) {
+      case (null) { Runtime.trap("Object not found!") };
+      case (?v) { v };
+    };
+    if (vehicle.owner != caller) {
+      Runtime.trap("Unauthorized: Only the owner can update contact info");
+    };
+    vehicleContactInfoMap.add(vehicleId, { contactName; contactPhone; contactPublic });
+  };
+
+  // Public info for the message page (no auth required)
+  public query func getObjectPublicInfo(vehicleId : VehicleId) : async ?ObjectPublicInfo {
+    switch (vehicles.get(vehicleId)) {
+      case (null) { null };
+      case (?vehicle) {
+        let category = switch (vehicleCategories.get(vehicleId)) {
+          case (null) { "Object" };
+          case (?c) { c };
+        };
+        let contactInfo = vehicleContactInfoMap.get(vehicleId);
+        let (contactName, contactPhone) = switch (contactInfo) {
+          case (null) { (null, null) };
+          case (?info) {
+            if (info.contactPublic) { (info.contactName, info.contactPhone) }
+            else { (null, null) }
+          };
+        };
+        ?{ name = vehicle.name; category; contactName; contactPhone };
+      };
+    };
+  };
+
+  // Get contact info for an object (owner only)
+  public query ({ caller }) func getObjectContactInfo(vehicleId : VehicleId) : async ?VehicleContactInfo {
+    let vehicle = switch (vehicles.get(vehicleId)) {
+      case (null) { Runtime.trap("Object not found!") };
+      case (?v) { v };
+    };
+    if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized");
+    };
+    vehicleContactInfoMap.get(vehicleId);
+  };
+
   // Add message to object
   public shared ({ caller }) func addMessage(input : MessageRequest) : async MessageId {
     let vehicle = switch (vehicles.get(input.vehicleId)) {
@@ -289,8 +367,31 @@ actor {
       isRead = false;
     };
     messages.add(messageId, message);
+    // Store location if provided
+    switch (input.locationLat, input.locationLng) {
+      case (?lat, ?lng) {
+        messageLocationsMap.add(messageId, { lat; lng });
+      };
+      case _ {};
+    };
     nextMessageId += 1;
     messageId;
+  };
+
+  // Get location for a message (owner only)
+  public query ({ caller }) func getMessageLocation(messageId : MessageId) : async ?MessageLocation {
+    let message = switch (messages.get(messageId)) {
+      case (null) { Runtime.trap("Message not found!") };
+      case (?m) { m };
+    };
+    let vehicle = switch (vehicles.get(message.vehicleId)) {
+      case (null) { Runtime.trap("Object not found!") };
+      case (?v) { v };
+    };
+    if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized");
+    };
+    messageLocationsMap.get(messageId);
   };
 
   // Delete object
@@ -767,19 +868,15 @@ actor {
     userProfileDetailsEntries := userProfileDetails.toArray();
     printableQRCodesEntries := printableQRCodes.toArray();
     vehicleCategoriesEntries := vehicleCategories.toArray();
+    vehicleContactInfoEntries := vehicleContactInfoMap.toArray();
+    messageLocationsEntries := messageLocationsMap.toArray();
     authAdminAssigned := accessControlState.adminAssigned;
     authUserRolesEntries := accessControlState.userRoles.toArray();
   };
 
-  // Clear backup arrays after restore to free memory
+  // NOTE: Do NOT clear stable arrays in postupgrade.
+  // They serve as a permanent backup. preupgrade keeps them fresh before each upgrade.
   system func postupgrade() {
-    vehiclesEntries := [];
-    messagesEntries := [];
-    userProfilesEntries := [];
-    stickerRequestsEntries := [];
-    userProfileDetailsEntries := [];
-    printableQRCodesEntries := [];
-    vehicleCategoriesEntries := [];
-    authUserRolesEntries := [];
+    // intentionally left empty
   };
 };

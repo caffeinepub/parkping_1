@@ -13,8 +13,14 @@ export const MessageRequest = IDL.Record({
   'message' : IDL.Text,
   'senderName' : IDL.Opt(IDL.Text),
   'vehicleId' : VehicleId,
+  'locationLat' : IDL.Opt(IDL.Text),
+  'locationLng' : IDL.Opt(IDL.Text),
 });
 export const MessageId = IDL.Nat;
+export const MessageLocation = IDL.Record({
+  'lat' : IDL.Text,
+  'lng' : IDL.Text,
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
@@ -54,6 +60,17 @@ export const Message = IDL.Record({
   'timestamp' : Time,
   'senderName' : IDL.Opt(IDL.Text),
   'vehicleId' : VehicleId,
+});
+export const ObjectPublicInfo = IDL.Record({
+  'name' : IDL.Text,
+  'category' : IDL.Text,
+  'contactName' : IDL.Opt(IDL.Text),
+  'contactPhone' : IDL.Opt(IDL.Text),
+});
+export const VehicleContactInfo = IDL.Record({
+  'contactName' : IDL.Opt(IDL.Text),
+  'contactPhone' : IDL.Opt(IDL.Text),
+  'contactPublic' : IDL.Bool,
 });
 export const StickerRequestId = IDL.Nat;
 export const StickerRequest = IDL.Record({
@@ -177,8 +194,11 @@ export const idlService = IDL.Service({
     ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfileFull)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getMessageLocation' : IDL.Func([MessageId], [IDL.Opt(MessageLocation)], ['query']),
   'getMyStickerRequests' : IDL.Func([], [IDL.Vec(StickerRequest)], ['query']),
   'getMyVehicles' : IDL.Func([], [IDL.Vec(Vehicle)], ['query']),
+  'getObjectContactInfo' : IDL.Func([VehicleId], [IDL.Opt(VehicleContactInfo)], ['query']),
+  'getObjectPublicInfo' : IDL.Func([VehicleId], [IDL.Opt(ObjectPublicInfo)], ['query']),
   'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
   'getUnreadMessages' : IDL.Func([], [IDL.Vec(Message)], ['query']),
   'getUnreadMessagesForOwner' : IDL.Func(
@@ -205,6 +225,7 @@ export const idlService = IDL.Service({
   'requestSticker' : IDL.Func([StickerRequestInput], [StickerRequestId], []),
   'revokePrintableQRCode' : IDL.Func([PrintableQRCodeId], [], []),
   'saveCallerUserProfile' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'setObjectContactInfo' : IDL.Func([VehicleId, IDL.Opt(IDL.Text), IDL.Opt(IDL.Text), IDL.Bool], [], []),
   'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
   'transform' : IDL.Func(
       [TransformationInput],
@@ -241,8 +262,14 @@ export const idlFactory = ({ IDL }) => {
     'message' : IDL.Text,
     'senderName' : IDL.Opt(IDL.Text),
     'vehicleId' : VehicleId,
+    'locationLat' : IDL.Opt(IDL.Text),
+    'locationLng' : IDL.Opt(IDL.Text),
   });
   const MessageId = IDL.Nat;
+  const MessageLocation = IDL.Record({
+    'lat' : IDL.Text,
+    'lng' : IDL.Text,
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
@@ -282,6 +309,17 @@ export const idlFactory = ({ IDL }) => {
     'timestamp' : Time,
     'senderName' : IDL.Opt(IDL.Text),
     'vehicleId' : VehicleId,
+  });
+  const ObjectPublicInfo = IDL.Record({
+    'name' : IDL.Text,
+    'category' : IDL.Text,
+    'contactName' : IDL.Opt(IDL.Text),
+    'contactPhone' : IDL.Opt(IDL.Text),
+  });
+  const VehicleContactInfo = IDL.Record({
+    'contactName' : IDL.Opt(IDL.Text),
+    'contactPhone' : IDL.Opt(IDL.Text),
+    'contactPublic' : IDL.Bool,
   });
   const StickerRequestId = IDL.Nat;
   const StickerRequest = IDL.Record({
@@ -410,8 +448,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getMessageLocation' : IDL.Func([MessageId], [IDL.Opt(MessageLocation)], ['query']),
     'getMyStickerRequests' : IDL.Func([], [IDL.Vec(StickerRequest)], ['query']),
     'getMyVehicles' : IDL.Func([], [IDL.Vec(Vehicle)], ['query']),
+    'getObjectContactInfo' : IDL.Func([VehicleId], [IDL.Opt(VehicleContactInfo)], ['query']),
+    'getObjectPublicInfo' : IDL.Func([VehicleId], [IDL.Opt(ObjectPublicInfo)], ['query']),
     'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
     'getUnreadMessages' : IDL.Func([], [IDL.Vec(Message)], ['query']),
     'getUnreadMessagesForOwner' : IDL.Func(
@@ -446,6 +487,7 @@ export const idlFactory = ({ IDL }) => {
     'requestSticker' : IDL.Func([StickerRequestInput], [StickerRequestId], []),
     'revokePrintableQRCode' : IDL.Func([PrintableQRCodeId], [], []),
     'saveCallerUserProfile' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'setObjectContactInfo' : IDL.Func([VehicleId, IDL.Opt(IDL.Text), IDL.Opt(IDL.Text), IDL.Bool], [], []),
     'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
     'transform' : IDL.Func(
         [TransformationInput],

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Bike,
@@ -19,12 +20,18 @@ import {
   Loader2,
   Package,
   PawPrint,
+  Phone,
   Plus,
+  User,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { ShoppingItem } from "../backend.d";
-import { useGetMyVehicles, useRegisterObject } from "../hooks/useQueries";
+import {
+  useGetMyVehicles,
+  useRegisterObject,
+  useSetObjectContactInfo,
+} from "../hooks/useQueries";
 import { useCreateCheckoutSession } from "../hooks/useStripe";
 
 const CATEGORIES = [
@@ -114,13 +121,25 @@ function getExtraField(
 
 export default function AddVehicleDialog() {
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"create" | "contact">("create");
+
+  // Step 1 state
   const [category, setCategory] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [identifier, setIdentifier] = useState("");
+
+  // Step 2 state
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactPublic, setContactPublic] = useState(false);
+  const [newVehicleId, setNewVehicleId] = useState<bigint | null>(null);
+
   const [redirecting, setRedirecting] = useState(false);
 
   const { mutateAsync: registerObject, isPending } = useRegisterObject();
+  const { mutateAsync: setContactInfo, isPending: savingContact } =
+    useSetObjectContactInfo();
   const { mutateAsync: createCheckoutSession } = useCreateCheckoutSession();
   const { data: vehicles } = useGetMyVehicles();
 
@@ -135,47 +154,84 @@ export default function AddVehicleDialog() {
     !!name.trim() &&
     (extraField?.required ? !!identifier.trim() : true);
 
+  const resetForm = () => {
+    setStep("create");
+    setCategory("");
+    setName("");
+    setDescription("");
+    setIdentifier("");
+    setContactName("");
+    setContactPhone("");
+    setContactPublic(false);
+    setNewVehicleId(null);
+  };
+
+  const handleOpenChange = (val: boolean) => {
+    setOpen(val);
+    if (!val) resetForm();
+  };
+
+  const handleAfterContact = async (skip: boolean) => {
+    if (
+      !skip &&
+      newVehicleId !== null &&
+      (contactName.trim() || contactPhone.trim())
+    ) {
+      try {
+        await setContactInfo({
+          vehicleId: newVehicleId,
+          contactName: contactName.trim() || null,
+          contactPhone: contactPhone.trim() || null,
+          contactPublic,
+        });
+      } catch {
+        toast.error(
+          "Contact info could not be saved, but your Digital Identity was created.",
+        );
+      }
+    }
+
+    resetForm();
+    setOpen(false);
+
+    if (isFirstObject) {
+      const shoppingItem: ShoppingItem = {
+        currency: "usd",
+        productName: "ScanLink Annual Subscription",
+        productDescription:
+          "$9.99/year — create up to 10 Digital Identities for your objects",
+        priceInCents: BigInt(999),
+        quantity: BigInt(1),
+      };
+      setRedirecting(true);
+      try {
+        const session = await createCheckoutSession([shoppingItem]);
+        if (!session?.url) throw new Error("Stripe session missing url");
+        window.location.href = session.url;
+      } catch {
+        setRedirecting(false);
+        toast.error(
+          "Could not start payment. Your Digital Identity was saved.",
+        );
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
     try {
-      await registerObject({
+      const result = await registerObject({
         name: name.trim(),
         description: description.trim(),
         identifier: identifier.trim().toUpperCase(),
         category,
       });
+      // result may be the new vehicle id (bigint) depending on backend
+      const vid = typeof result === "bigint" ? result : null;
+      setNewVehicleId(vid);
       toast.success("Digital Identity created!");
-
-      setName("");
-      setDescription("");
-      setIdentifier("");
-      setCategory("");
-      setOpen(false);
-
-      // Only charge on first object (subscription activation)
-      if (isFirstObject) {
-        const shoppingItem: ShoppingItem = {
-          currency: "usd",
-          productName: "ScanLink Annual Subscription",
-          productDescription:
-            "$9.99/year — create up to 10 Digital Identities for your objects",
-          priceInCents: BigInt(999),
-          quantity: BigInt(1),
-        };
-
-        setRedirecting(true);
-        try {
-          const session = await createCheckoutSession([shoppingItem]);
-          if (!session?.url) throw new Error("Stripe session missing url");
-          window.location.href = session.url;
-        } catch (_err) {
-          setRedirecting(false);
-          toast.error(
-            "Could not start payment. Your Digital Identity was saved.",
-          );
-        }
-      }
+      setStep("contact");
     } catch (err: any) {
       const msg = err?.message || "";
       if (msg.includes("Limit reached")) {
@@ -198,7 +254,7 @@ export default function AddVehicleDialog() {
           </div>
         </div>
       )}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           <Button
             className="bg-primary text-white hover:bg-primary/90 gap-2"
@@ -209,156 +265,267 @@ export default function AddVehicleDialog() {
             {isAtLimit ? "Limit Reached (10/10)" : "Create Digital Identity"}
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-lg" data-ocid="vehicles.dialog">
-          <DialogHeader>
-            <DialogTitle>Create Digital Identity</DialogTitle>
-          </DialogHeader>
-          <div className="bg-teal-light/50 border border-primary/20 rounded-lg px-4 py-2.5 text-sm text-muted-foreground">
-            💳{" "}
-            {isFirstObject ? (
-              <>
-                <span className="font-medium text-navy">$9.99/year</span> per
-                account — includes up to{" "}
-                <span className="font-medium text-navy">
-                  10 Digital Identities
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="font-medium text-navy">{currentCount}/10</span>{" "}
-                Digital Identities used on your subscription
-              </>
-            )}
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-4 py-2">
-            {/* Category selector */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                What are you tagging?{" "}
-                <span className="text-destructive">*</span>
-              </Label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {CATEGORIES.map(({ id, label, sub, Icon }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => {
-                      setCategory(id);
-                      setIdentifier("");
-                    }}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-center transition-all ${
-                      category === id
-                        ? "border-primary bg-teal-light/60 text-primary"
-                        : "border-border bg-white hover:border-primary/40 text-muted-foreground hover:text-navy"
-                    }`}
-                    data-ocid="vehicles.toggle"
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="text-xs font-semibold leading-tight">
-                      {label}
-                    </span>
-                    <span className="text-xs leading-tight opacity-60 hidden sm:block">
-                      {sub}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
 
-            {category && (
-              <>
-                <div className="space-y-1">
-                  <Label htmlFor="v-name">
-                    Name <span className="text-destructive">*</span>
+        <DialogContent className="sm:max-w-lg" data-ocid="vehicles.dialog">
+          {step === "create" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Create Digital Identity</DialogTitle>
+              </DialogHeader>
+              <div className="bg-teal-light/50 border border-primary/20 rounded-lg px-4 py-2.5 text-sm text-muted-foreground">
+                💳{" "}
+                {isFirstObject ? (
+                  <>
+                    <span className="font-medium text-navy">$9.99/year</span>{" "}
+                    per account — includes up to{" "}
+                    <span className="font-medium text-navy">
+                      10 Digital Identities
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-medium text-navy">
+                      {currentCount}/10
+                    </span>{" "}
+                    Digital Identities used on your subscription
+                  </>
+                )}
+              </div>
+              <form onSubmit={handleSubmit} className="space-y-4 py-2">
+                {/* Category selector */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    What are you tagging?{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    id="v-name"
-                    placeholder={`e.g. ${
-                      category === "Pet / Animal"
-                        ? "Buddy the Labrador"
-                        : category === "Bicycle / Scooter"
-                          ? "My Trek Bike"
-                          : category === "Vehicle"
-                            ? "Blue Honda Civic"
-                            : category === "Luggage / Bag"
-                              ? "Red Suitcase"
-                              : category === "Electronics"
-                                ? "MacBook Pro"
-                                : "My Keys"
-                    }`}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    data-ocid="vehicles.input"
-                  />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {CATEGORIES.map(({ id, label, sub, Icon }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => {
+                          setCategory(id);
+                          setIdentifier("");
+                        }}
+                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-center transition-all ${
+                          category === id
+                            ? "border-primary bg-teal-light/60 text-primary"
+                            : "border-border bg-white hover:border-primary/40 text-muted-foreground hover:text-navy"
+                        }`}
+                        data-ocid="vehicles.toggle"
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span className="text-xs font-semibold leading-tight">
+                          {label}
+                        </span>
+                        <span className="text-xs leading-tight opacity-60 hidden sm:block">
+                          {sub}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                {extraField && (
-                  <div className="space-y-1">
-                    <Label htmlFor="v-identifier">
-                      {extraField.label}{" "}
-                      {extraField.required && (
-                        <span className="text-destructive">*</span>
-                      )}
-                    </Label>
-                    <Input
-                      id="v-identifier"
-                      placeholder={extraField.placeholder}
-                      value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
-                      required={extraField.required}
-                      data-ocid="vehicles.input"
-                    />
-                  </div>
+                {category && (
+                  <>
+                    <div className="space-y-1">
+                      <Label htmlFor="v-name">
+                        Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="v-name"
+                        placeholder={`e.g. ${
+                          category === "Pet / Animal"
+                            ? "Buddy the Labrador"
+                            : category === "Bicycle / Scooter"
+                              ? "My Trek Bike"
+                              : category === "Vehicle"
+                                ? "Blue Honda Civic"
+                                : category === "Luggage / Bag"
+                                  ? "Red Suitcase"
+                                  : category === "Electronics"
+                                    ? "MacBook Pro"
+                                    : "My Keys"
+                        }`}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                        data-ocid="vehicles.input"
+                      />
+                    </div>
+
+                    {extraField && (
+                      <div className="space-y-1">
+                        <Label htmlFor="v-identifier">
+                          {extraField.label}{" "}
+                          {extraField.required && (
+                            <span className="text-destructive">*</span>
+                          )}
+                        </Label>
+                        <Input
+                          id="v-identifier"
+                          placeholder={extraField.placeholder}
+                          value={identifier}
+                          onChange={(e) => setIdentifier(e.target.value)}
+                          required={extraField.required}
+                          data-ocid="vehicles.input"
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <Label htmlFor="v-desc">
+                        Description{" "}
+                        <span className="text-muted-foreground text-xs">
+                          (optional)
+                        </span>
+                      </Label>
+                      <Textarea
+                        id="v-desc"
+                        placeholder="Add any extra details to help someone identify this object…"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        rows={3}
+                        data-ocid="vehicles.textarea"
+                      />
+                    </div>
+                  </>
                 )}
 
-                <div className="space-y-1">
-                  <Label htmlFor="v-desc">
-                    Description{" "}
-                    <span className="text-muted-foreground text-xs">
+                <DialogFooter className="pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleOpenChange(false)}
+                    data-ocid="vehicles.cancel_button"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={!canSubmit || isPending}
+                    className="bg-primary text-white hover:bg-primary/90"
+                    data-ocid="vehicles.submit_button"
+                  >
+                    {isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating…
+                      </>
+                    ) : isFirstObject ? (
+                      "Create & Subscribe ($9.99/yr)"
+                    ) : (
+                      "Create Digital Identity"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </>
+          ) : (
+            /* Step 2: Contact info */
+            <>
+              <DialogHeader>
+                <DialogTitle>Add Contact Info</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground -mt-2">
+                Optionally share your contact details with people who message
+                you. You control who sees this.
+              </p>
+
+              <div className="space-y-4 py-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="c-name" className="flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-muted-foreground" />
+                    Contact Name
+                    <span className="text-muted-foreground text-xs font-normal">
                       (optional)
                     </span>
                   </Label>
-                  <Textarea
-                    id="v-desc"
-                    placeholder="Add any extra details to help someone identify this object…"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={3}
-                    data-ocid="vehicles.textarea"
+                  <Input
+                    id="c-name"
+                    placeholder="e.g. John Smith"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    data-ocid="contact.input"
                   />
                 </div>
-              </>
-            )}
 
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-                data-ocid="vehicles.cancel_button"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={!canSubmit || isPending}
-                className="bg-primary text-white hover:bg-primary/90"
-                data-ocid="vehicles.submit_button"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating…
-                  </>
-                ) : isFirstObject ? (
-                  "Create & Subscribe ($9.99/yr)"
-                ) : (
-                  "Create Digital Identity"
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="c-phone"
+                    className="flex items-center gap-1.5"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                    Contact Phone
+                    <span className="text-muted-foreground text-xs font-normal">
+                      (optional)
+                    </span>
+                  </Label>
+                  <Input
+                    id="c-phone"
+                    type="tel"
+                    placeholder="e.g. +1 555 000 1234"
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    data-ocid="contact.input"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-4 py-3">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium text-navy">
+                      Visible to message senders
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      When enabled, senders can see your name and call you.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={contactPublic}
+                    onCheckedChange={setContactPublic}
+                    data-ocid="contact.switch"
+                  />
+                </div>
+
+                {contactPublic && (
+                  <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-800">
+                    <span className="text-base leading-none mt-0.5">⚠️</span>
+                    <span>
+                      Your name and phone number will be shown to anyone who
+                      scans this QR code.
+                    </span>
+                  </div>
                 )}
-              </Button>
-            </DialogFooter>
-          </form>
+              </div>
+
+              <DialogFooter className="pt-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleAfterContact(true)}
+                  data-ocid="contact.cancel_button"
+                >
+                  Skip
+                </Button>
+                <Button
+                  type="button"
+                  disabled={savingContact}
+                  className="bg-primary text-white hover:bg-primary/90"
+                  onClick={() => handleAfterContact(false)}
+                  data-ocid="contact.save_button"
+                >
+                  {savingContact ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    "Save & Continue"
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>

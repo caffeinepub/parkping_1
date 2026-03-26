@@ -27,10 +27,22 @@ export interface Message {
   'vehicleId' : VehicleId,
 }
 export type MessageId = bigint;
+export interface MessageLocation {
+  'lat' : string,
+  'lng' : string,
+}
 export interface MessageRequest {
   'message' : string,
   'senderName' : [] | [string],
   'vehicleId' : VehicleId,
+  'locationLat' : [] | [string],
+  'locationLng' : [] | [string],
+}
+export interface ObjectPublicInfo {
+  'name' : string,
+  'category' : string,
+  'contactName' : [] | [string],
+  'contactPhone' : [] | [string],
 }
 export interface PrintableQRCode {
   'id' : PrintableQRCodeId,
@@ -113,6 +125,11 @@ export interface UserSummary {
   'name' : [] | [string],
   'vehicleCount' : bigint,
 }
+export interface VehicleContactInfo {
+  'contactName' : [] | [string],
+  'contactPhone' : [] | [string],
+  'contactPublic' : boolean,
+}
 export interface Vehicle {
   'id' : VehicleId,
   'licensePlate' : string,
@@ -153,7 +170,10 @@ export interface _SERVICE {
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfileFull]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getMyStickerRequests' : ActorMethod<[], Array<StickerRequest>>,
+  'getMessageLocation' : ActorMethod<[MessageId], [] | [MessageLocation]>,
   'getMyVehicles' : ActorMethod<[], Array<Vehicle>>,
+  'getObjectContactInfo' : ActorMethod<[VehicleId], [] | [VehicleContactInfo]>,
+  'getObjectPublicInfo' : ActorMethod<[VehicleId], [] | [ObjectPublicInfo]>,
   'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
   'getUnreadMessages' : ActorMethod<[], Array<Message>>,
   'getUnreadMessagesForOwner' : ActorMethod<[Principal], Array<Message>>,
@@ -168,6 +188,7 @@ export interface _SERVICE {
   'requestSticker' : ActorMethod<[StickerRequestInput], StickerRequestId>,
   'revokePrintableQRCode' : ActorMethod<[PrintableQRCodeId], undefined>,
   'saveCallerUserProfile' : ActorMethod<[string, string], undefined>,
+  'setObjectContactInfo' : ActorMethod<[VehicleId, [] | [string], [] | [string], boolean], undefined>,
   'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
   'updateCallerUserProfile' : ActorMethod<

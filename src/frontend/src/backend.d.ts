@@ -18,6 +18,8 @@ export interface MessageRequest {
     message: string;
     senderName?: string;
     vehicleId: VehicleId;
+    locationLat?: string;
+    locationLng?: string;
 }
 export interface PrintableQRCode {
     id: PrintableQRCodeId;
@@ -132,6 +134,21 @@ export interface AdminStats {
     totalMessages: bigint;
     totalUsers: bigint;
 }
+export interface VehicleContactInfo {
+    contactName: [] | [string];
+    contactPhone: [] | [string];
+    contactPublic: boolean;
+}
+export interface ObjectPublicInfo {
+    name: string;
+    category: string;
+    contactName: [] | [string];
+    contactPhone: [] | [string];
+}
+export interface MessageLocation {
+    lat: string;
+    lng: string;
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -176,4 +193,8 @@ export interface backendInterface {
     transform(input: TransformationInput): Promise<TransformationOutput>;
     updateCallerUserProfile(name: string, email: string, phone: string | null, addressLine1: string | null, addressLine2: string | null, city: string | null, stateProvince: string | null, postcode: string | null, country: string | null): Promise<void>;
     updateStickerStatus(stickerRequestId: StickerRequestId, newStatus: string, trackingNote: string | null): Promise<void>;
+    setObjectContactInfo(vehicleId: VehicleId, contactName: string | null, contactPhone: string | null, contactPublic: boolean): Promise<void>;
+    getObjectContactInfo(vehicleId: VehicleId): Promise<VehicleContactInfo | null>;
+    getObjectPublicInfo(vehicleId: VehicleId): Promise<ObjectPublicInfo | null>;
+    getMessageLocation(messageId: MessageId): Promise<MessageLocation | null>;
 }

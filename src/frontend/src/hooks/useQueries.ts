@@ -16,9 +16,22 @@ export function useGetMyVehicles() {
   const { actor, isFetching } = useActor();
   return useQuery<Vehicle[]>({
     queryKey: ["myVehicles"],
-    queryFn: async () => {
+    queryFn: async (): Promise<Vehicle[]> => {
       if (!actor) return [];
-      return actor.getMyVehicles();
+      return actor.getMyVehicles() as unknown as Promise<Vehicle[]>;
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetVehicleCategories() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Map<string, string>>({
+    queryKey: ["vehicleCategories"],
+    queryFn: async (): Promise<Map<string, string>> => {
+      if (!actor) return new Map();
+      const entries = await actor.getVehicleCategories();
+      return new Map(entries.map(([id, cat]) => [id.toString(), cat]));
     },
     enabled: !!actor && !isFetching,
   });
@@ -28,9 +41,9 @@ export function useGetAllVehicles() {
   const { actor, isFetching } = useActor();
   return useQuery<Vehicle[]>({
     queryKey: ["allVehicles"],
-    queryFn: async () => {
+    queryFn: async (): Promise<Vehicle[]> => {
       if (!actor) return [];
-      return actor.getAllVehicles();
+      return actor.getAllVehicles() as unknown as Promise<Vehicle[]>;
     },
     enabled: !!actor && !isFetching,
   });
@@ -97,6 +110,31 @@ export function useRegisterVehicle() {
       return actor.registerVehicle(name, description, licensePlate);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["myVehicles"] }),
+  });
+}
+
+export function useRegisterObject() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      name,
+      description,
+      identifier,
+      category,
+    }: {
+      name: string;
+      description: string;
+      identifier: string;
+      category: string;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.registerObject(name, description, identifier, category);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["myVehicles"] });
+      qc.invalidateQueries({ queryKey: ["vehicleCategories"] });
+    },
   });
 }
 

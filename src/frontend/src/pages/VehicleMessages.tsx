@@ -10,9 +10,15 @@ import { useParams } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  Bike,
+  Briefcase,
   Car,
   Check,
+  Key,
+  Laptop,
   MessageSquare,
+  PawPrint,
+  Tag,
   Trash2,
   User,
 } from "lucide-react";
@@ -25,8 +31,28 @@ import {
   useGetCallerUserProfile,
   useGetMessagesForVehicle,
   useGetMyVehicles,
+  useGetVehicleCategories,
   useMarkMessageAsRead,
 } from "../hooks/useQueries";
+
+function getCategoryIcon(category: string) {
+  switch (category) {
+    case "Bicycle / Scooter":
+      return Bike;
+    case "Pet / Animal":
+      return PawPrint;
+    case "Luggage / Bag":
+      return Briefcase;
+    case "Electronics":
+      return Laptop;
+    case "Keys / Personal Item":
+      return Key;
+    case "Vehicle":
+      return Car;
+    default:
+      return Tag;
+  }
+}
 
 function formatTime(timestamp: bigint) {
   const ms = Number(timestamp / 1_000_000n);
@@ -45,6 +71,7 @@ export default function VehicleMessages() {
 
   const vehicleId = BigInt(id);
   const { data: vehicles } = useGetMyVehicles();
+  const { data: categoryMap } = useGetVehicleCategories();
   const vehicle = vehicles?.find((v) => v.id === vehicleId);
 
   const { data: messages, isLoading } = useGetMessagesForVehicle(vehicleId);
@@ -56,6 +83,10 @@ export default function VehicleMessages() {
   const sortedMessages = messages
     ? [...messages].sort((a, b) => Number(b.timestamp - a.timestamp))
     : [];
+
+  const CategoryIcon = getCategoryIcon(
+    categoryMap?.get(vehicleId.toString()) ?? "",
+  );
 
   const handleMarkRead = async (messageId: bigint) => {
     try {
@@ -109,14 +140,16 @@ export default function VehicleMessages() {
             </Link>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-teal-light rounded-xl flex items-center justify-center">
-                <Car className="w-5 h-5 text-primary" />
+                <CategoryIcon className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-navy">
-                  {vehicle?.name ?? "Vehicle"}
+                  {vehicle?.name ?? "Object"}
                 </h1>
-                <p className="text-sm text-muted-foreground font-mono">
-                  {vehicle?.licensePlate}
+                <p className="text-sm text-muted-foreground">
+                  {vehicle?.licensePlate ||
+                    categoryMap?.get(vehicleId.toString()) ||
+                    ""}
                 </p>
               </div>
             </div>
@@ -229,10 +262,10 @@ export default function VehicleMessages() {
             <div className="lg:col-span-1">
               <div className="bg-white rounded-2xl border border-border shadow-card p-6 sticky top-24">
                 <h3 className="font-bold text-navy mb-2 flex items-center gap-2">
-                  <Car className="w-4 h-4 text-primary" /> Your QR Code
+                  <Tag className="w-4 h-4 text-primary" /> Your QR Code
                 </h3>
                 <p className="text-xs text-muted-foreground mb-5">
-                  Print this QR code and stick it on your vehicle. Anyone who
+                  Print this QR code and attach it to your object. Anyone who
                   scans it can send you a message.
                 </p>
                 <QRCodeDisplay
@@ -241,7 +274,7 @@ export default function VehicleMessages() {
                 />
                 <a
                   href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(`${window.location.origin}/message/${id}`)}`}
-                  download={`parkping-qr-${id}.png`}
+                  download={`scanlink-qr-${id}.png`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -255,7 +288,7 @@ export default function VehicleMessages() {
                   </Button>
                 </a>
                 <PrintQRButton
-                  vehicleName={vehicle?.name ?? "Vehicle"}
+                  vehicleName={vehicle?.name ?? "Object"}
                   licensePlate={vehicle?.licensePlate}
                   vehicleId={id}
                   className="w-full mt-2 border-border text-foreground hover:text-primary hover:border-primary"
@@ -263,7 +296,7 @@ export default function VehicleMessages() {
                 <div className="mt-2">
                   <RequestStickerDialog
                     vehicleId={vehicleId}
-                    vehicleName={vehicle?.name ?? "Vehicle"}
+                    vehicleName={vehicle?.name ?? "Object"}
                     userProfile={userProfile as UserProfile | null}
                     trigger={
                       <Button

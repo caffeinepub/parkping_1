@@ -46,10 +46,10 @@ export default function Navbar({ transparent = false }: NavbarProps) {
         <Link to="/" className="flex items-center gap-2" data-ocid="nav.link">
           <img
             src="/assets/uploads/image-019d21e8-c67a-74dd-a137-fcd8265741f1-1.png"
-            alt="ParkPing logo"
+            alt="Scanlink logo"
             className="h-10 w-auto"
           />
-          <span className="font-bold text-xl text-navy">ParkPing</span>
+          <span className="font-bold text-xl text-navy">Scanlink</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-8">

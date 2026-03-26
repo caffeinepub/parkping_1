@@ -153,6 +153,7 @@ export interface backendInterface {
     getAllVehicles(): Promise<Array<Vehicle>>;
     getAllVehiclesForUser(user: Principal): Promise<Array<Vehicle>>;
     getAssignedQRForVehicle(vehicleId: VehicleId): Promise<PrintableQRCode | null>;
+    getVehicleCategories(): Promise<Array<[VehicleId, string]>>;
     getCallerUserProfile(): Promise<UserProfileFull | null>;
     getCallerUserRole(): Promise<UserRole>;
     getMyStickerRequests(): Promise<Array<StickerRequest>>;
@@ -167,6 +168,7 @@ export interface backendInterface {
     isStripeConfigured(): Promise<boolean>;
     markMessageAsRead(messageId: MessageId): Promise<void>;
     registerVehicle(name: string, description: string, licensePlate: string): Promise<VehicleId>;
+    registerObject(name: string, description: string, identifier: string, category: string): Promise<VehicleId>;
     requestSticker(input: StickerRequestInput): Promise<StickerRequestId>;
     revokePrintableQRCode(id: PrintableQRCodeId): Promise<void>;
     saveCallerUserProfile(name: string, email: string): Promise<void>;

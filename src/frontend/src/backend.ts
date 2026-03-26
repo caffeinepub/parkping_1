@@ -236,6 +236,7 @@ export interface backendInterface {
     getAllVehicles(): Promise<Array<Vehicle>>;
     getAllVehiclesForUser(user: Principal): Promise<Array<Vehicle>>;
     getAssignedQRForVehicle(vehicleId: VehicleId): Promise<PrintableQRCode | null>;
+    getVehicleCategories(): Promise<Array<[VehicleId, string]>>;
     getCallerUserProfile(): Promise<UserProfileFull | null>;
     getCallerUserRole(): Promise<UserRole>;
     getMyStickerRequests(): Promise<Array<StickerRequest>>;
@@ -250,6 +251,7 @@ export interface backendInterface {
     isStripeConfigured(): Promise<boolean>;
     markMessageAsRead(messageId: MessageId): Promise<void>;
     registerVehicle(name: string, description: string, licensePlate: string): Promise<VehicleId>;
+    registerObject(name: string, description: string, identifier: string, category: string): Promise<VehicleId>;
     requestSticker(input: StickerRequestInput): Promise<StickerRequestId>;
     revokePrintableQRCode(id: PrintableQRCodeId): Promise<void>;
     saveCallerUserProfile(name: string, email: string): Promise<void>;
@@ -485,6 +487,21 @@ export class Backend implements backendInterface {
             return from_candid_opt_n21(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getVehicleCategories(): Promise<Array<[VehicleId, string]>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getVehicleCategories();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getVehicleCategories();
+            return result;
+        }
+    }
+
     async getCallerUserProfile(): Promise<UserProfileFull | null> {
         if (this.processError) {
             try {
@@ -681,6 +698,21 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async registerObject(arg0: string, arg1: string, arg2: string, arg3: string): Promise<VehicleId> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.registerObject(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.registerObject(arg0, arg1, arg2, arg3);
+            return result;
+        }
+    }
+
     async requestSticker(arg0: StickerRequestInput): Promise<StickerRequestId> {
         if (this.processError) {
             try {

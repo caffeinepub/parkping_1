@@ -1,50 +1,39 @@
-# ParkPing
+# Scanlink
 
 ## Current State
-ParkPing is a decentralized ICP app for vehicle owners to receive messages via QR codes. Existing backend has: Vehicle, Message, StickerRequest entities, authorization (admin/user), Stripe, HTTP outcalls. Frontend has: LandingPage, Dashboard, AdminPortal, VehicleMessages, PublicMessagePage.
+App is ParkPing — a vehicle-only digital QR platform. Backend has a `Vehicle` type with `name`, `description`, `licensePlate` fields. All frontend copy is vehicle-centric (cars, windshields, license plates). Navbar/footer say "ParkPing". AddVehicleDialog only supports vehicle registration.
 
 ## Requested Changes (Diff)
 
 ### Add
-- **PrintableQRCode entity** in Motoko backend:
-  - `id: Nat`
-  - `uniqueIdentifier: Text` (e.g. QR-A7X9K2, unique, no confusing chars 0/O/1/I)
-  - `qrData: Text` (URL: `https://parkping.app/assign?code=<identifier>`)
-  - `status: Text` (generated | assigned | revoked)
-  - `assignedVehicleId: ?VehicleId`
-  - `assignedAt: ?Time`
-  - `generatedBy: Principal`
-  - `createdAt: Time`
-- **Backend functions:**
-  - `generatePrintableQRCodes(quantity: Nat, prefix: Text): [PrintableQRCode]` — admin only, generates batch with unique identifiers
-  - `getAllPrintableQRCodes(): [PrintableQRCode]` — admin only
-  - `assignPrintableQRCode(uniqueIdentifier: Text, vehicleId: VehicleId): ()` — user only, validates QR exists + status=generated, user owns vehicle
-  - `revokePrintableQRCode(id: Nat): ()` — admin only
-- **Admin QR Codes tab** in AdminPortal:
-  - Form: quantity input + optional prefix + "Generate" button
-  - Preview grid of generated codes with QR images
-  - Filterable table of all codes by status
-  - Download as PDF (print layout, multiple per page) or individual PNGs
-- **User: Assign Printed QR Code** in Dashboard vehicle cards:
-  - Button "Assign Printed QR Code" on each vehicle card
-  - Modal with identifier input + vehicle dropdown
-  - On success: show QR code image + identifier on vehicle card
-- **AdminStats** updated to include `totalPrintableQRCodes: Nat`
+- `category` field to Vehicle type (backend + frontend type)
+- Category selector in the Create Digital ID dialog with options: Vehicle, Bicycle/Scooter, Pet/Animal, Luggage/Bag, Electronics/Laptop, Keys/Personal Item, Other
+- Category-specific extra fields (e.g. licensePlate for Vehicle, serialNumber for Bike, breed for Pet)
+- Category icons in the objects list
+- "How It Works" universality messaging on the landing page
+- Marketing copy examples on landing page
 
 ### Modify
-- `main.mo`: add PrintableQRCode map, counter, stable backup, preupgrade/postupgrade
-- `AdminPortal.tsx`: add "QR Codes" tab
-- `Dashboard.tsx`: add "Assign Printed QR Code" button + modal per vehicle card
-- `useQueries.ts`: add hooks for new backend functions
-- `backend.d.ts`: updated automatically by bindgen
+- Backend: Add `category` to Vehicle type; update `registerVehicle` to accept `category`
+- Navbar: "ParkPing" → "Scanlink"
+- Footer: all ParkPing references → Scanlink, update tagline
+- LandingPage: hero copy, steps, features all updated to universal "Digital ID for Anything" language
+- Dashboard: "Your Vehicles" → "My Objects", empty state updated, card icons use category icons
+- AddVehicleDialog: renamed to AddObjectDialog, category selector, context-specific fields
+- PublicMessagePage: "vehicle" references → "object", "ParkPing" → "Scanlink"
+- AdminPortal: vehicle column labels → object, stats labels updated
+- PrintQRButton: update sticker text
 
 ### Remove
-- Nothing removed
+- All hard-coded vehicle-only assumptions and copy
 
 ## Implementation Plan
-1. Update `main.mo` with PrintableQRCode type, identifier generation logic, and all 4 new functions; update AdminStats; add stable backup arrays
-2. Regenerate backend bindings via `generate_motoko_code`
-3. Frontend: Add `useGeneratePrintableQRCodes`, `useGetAllPrintableQRCodes`, `useAssignPrintableQRCode`, `useRevokePrintableQRCode` hooks
-4. Frontend: Add Admin QR Codes tab in AdminPortal with generate form, preview grid, status-filtered table, PDF download
-5. Frontend: Add AssignPrintableQRDialog component; integrate into Dashboard vehicle cards
-6. Validate and deploy
+1. Update backend `main.mo` to add `category` field to Vehicle type
+2. Update `backend.d.ts` with new Vehicle type including category
+3. Rewrite AddVehicleDialog as AddObjectDialog with category selector + context fields
+4. Update Dashboard with new copy, icons per category
+5. Update LandingPage with universal copy and marketing examples
+6. Update Navbar/Footer: ParkPing → Scanlink
+7. Update PublicMessagePage copy
+8. Update AdminPortal column/label text
+9. Update PrintQRButton sticker branding

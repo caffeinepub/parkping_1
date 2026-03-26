@@ -28,7 +28,7 @@ export function printQRCode({
     <!DOCTYPE html>
     <html>
       <head>
-        <title>ParkPing QR Code — ${vehicleName}</title>
+        <title>Scanlink QR Code — ${vehicleName}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body {
@@ -103,8 +103,8 @@ export function printQRCode({
       <body>
         <div class="card">
           <div class="logo-wrap">
-            <img src="${logoUrl}" alt="ParkPing" class="logo-img" />
-            <span class="logo-url">www.parkping.app</span>
+            <img src="${logoUrl}" alt="Scanlink" class="logo-img" />
+            <span class="logo-url">www.scanlink.app</span>
           </div>
           <div class="qr">
             <img src="${qrUrl}" alt="QR Code" />

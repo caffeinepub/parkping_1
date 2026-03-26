@@ -45,7 +45,7 @@ export default function ProfileSetup({ open }: ProfileSetupProps) {
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Welcome to ParkPing!</DialogTitle>
+          <DialogTitle>Welcome to ScanLink!</DialogTitle>
           <DialogDescription>
             Please enter your name and email to finish setting up your account.
           </DialogDescription>

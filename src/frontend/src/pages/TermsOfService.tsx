@@ -17,7 +17,7 @@ export default function TermsOfService() {
               1. Acceptance of Terms
             </h2>
             <p className="text-muted-foreground leading-relaxed">
-              By accessing or using ParkPing, you agree to be bound by these
+              By accessing or using ScanLink, you agree to be bound by these
               Terms of Service. If you do not agree to these terms, please do
               not use the service.
             </p>
@@ -28,9 +28,9 @@ export default function TermsOfService() {
               2. Description of Service
             </h2>
             <p className="text-muted-foreground leading-relaxed">
-              ParkPing is a decentralized vehicle communication platform built
-              on the Internet Computer Protocol (ICP). It allows vehicle owners
-              to register their vehicles, receive unique QR codes, and receive
+              ScanLink is a decentralized digital identity platform built on the
+              Internet Computer Protocol (ICP). It allows vehicle owners to
+              register their vehicles, receive unique QR codes, and receive
               anonymous messages from anyone who scans those codes.
             </p>
           </div>
@@ -41,7 +41,7 @@ export default function TermsOfService() {
             </h2>
             <p className="text-muted-foreground leading-relaxed">
               You must be at least 18 years old to create an account and use
-              ParkPing as a vehicle owner. Anyone may scan a QR code and leave a
+              ScanLink as an object owner. Anyone may scan a QR code and leave a
               message without creating an account.
             </p>
           </div>
@@ -96,7 +96,7 @@ export default function TermsOfService() {
               6. Acceptable Use
             </h2>
             <p className="text-muted-foreground leading-relaxed mb-3">
-              You agree not to use ParkPing to:
+              You agree not to use ScanLink to:
             </p>
             <ul className="list-disc list-inside space-y-2 text-muted-foreground leading-relaxed">
               <li>Send harassing, threatening, or abusive messages.</li>
@@ -115,9 +115,9 @@ export default function TermsOfService() {
           <div>
             <h2 className="text-xl font-semibold text-navy mb-3">7. Content</h2>
             <p className="text-muted-foreground leading-relaxed">
-              You retain ownership of any content you submit to ParkPing. By
-              submitting content, you grant ParkPing a limited license to store
-              and display it as necessary to operate the service. ParkPing
+              You retain ownership of any content you submit to ScanLink. By
+              submitting content, you grant ScanLink a limited license to store
+              and display it as necessary to operate the service. ScanLink
               reserves the right to remove content that violates these Terms.
             </p>
           </div>
@@ -127,7 +127,7 @@ export default function TermsOfService() {
               8. Disclaimer of Warranties
             </h2>
             <p className="text-muted-foreground leading-relaxed">
-              ParkPing is provided "as is" without warranties of any kind,
+              ScanLink is provided "as is" without warranties of any kind,
               express or implied. We do not guarantee uninterrupted or
               error-free service. The decentralized nature of ICP means certain
               platform behaviors are outside our direct control.
@@ -139,7 +139,7 @@ export default function TermsOfService() {
               9. Limitation of Liability
             </h2>
             <p className="text-muted-foreground leading-relaxed">
-              To the fullest extent permitted by law, ParkPing shall not be
+              To the fullest extent permitted by law, ScanLink shall not be
               liable for any indirect, incidental, special, or consequential
               damages arising from your use of the service, including but not
               limited to loss of data or unauthorized access to your account.
@@ -153,7 +153,7 @@ export default function TermsOfService() {
             <p className="text-muted-foreground leading-relaxed">
               We may update these Terms of Service from time to time. We will
               notify registered users of material changes. Continued use of
-              ParkPing after changes are posted constitutes acceptance of the
+              ScanLink after changes are posted constitutes acceptance of the
               updated terms.
             </p>
           </div>
@@ -176,10 +176,10 @@ export default function TermsOfService() {
             <p className="text-muted-foreground leading-relaxed">
               For questions about these Terms, email us at{" "}
               <a
-                href="mailto:support@parkping.app"
+                href="mailto:support@scanlink.app"
                 className="text-primary hover:underline"
               >
-                support@parkping.app
+                support@scanlink.app
               </a>
               .
             </p>

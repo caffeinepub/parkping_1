@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useParams } from "@tanstack/react-router";
-import { Car, CheckCircle2, Loader2, QrCode } from "lucide-react";
+import { CheckCircle2, Loader2, QrCode } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useAddMessage } from "../hooks/useQueries";
@@ -34,9 +34,9 @@ export default function PublicMessagePage() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-10">
       <a href="/" className="flex items-center gap-2 mb-10">
         <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-          <Car className="w-5 h-5 text-white" />
+          <QrCode className="w-5 h-5 text-white" />
         </div>
-        <span className="font-bold text-xl text-navy">ParkPing</span>
+        <span className="font-bold text-xl text-navy">Scanlink</span>
       </a>
 
       <AnimatePresence mode="wait">
@@ -55,8 +55,8 @@ export default function PublicMessagePage() {
             </div>
             <h1 className="text-2xl font-bold text-navy mb-3">Message Sent!</h1>
             <p className="text-muted-foreground leading-relaxed">
-              Your message was delivered to the vehicle owner. They'll be
-              notified on ParkPing.
+              Your message was delivered to the owner. They&apos;ll be notified
+              on Scanlink.
             </p>
             <div className="mt-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <QrCode className="w-4 h-4 flex-shrink-0" />
@@ -85,7 +85,7 @@ export default function PublicMessagePage() {
                     Leave a message
                   </h1>
                   <p className="text-xs text-muted-foreground">
-                    For this vehicle's owner
+                    For this object&apos;s owner
                   </p>
                 </div>
               </div>
@@ -112,7 +112,7 @@ export default function PublicMessagePage() {
                   </Label>
                   <Textarea
                     id="message-text"
-                    placeholder="e.g. Your left headlight is out! 👋"
+                    placeholder="e.g. I found your lost item! 👋"
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     rows={4}

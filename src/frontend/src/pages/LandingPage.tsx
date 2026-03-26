@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
 import {
   BellRing,
-  Car,
   CheckCircle2,
   MessageSquare,
   QrCode,
   Shield,
   SmartphoneNfc,
+  Tag,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
@@ -17,24 +17,24 @@ import { useInternetIdentity } from "../hooks/useInternetIdentity";
 const steps = [
   {
     number: "01",
-    icon: Car,
-    title: "Register Vehicle",
+    icon: Tag,
+    title: "Create a Digital ID",
     description:
-      "Sign in with Internet Identity and register your vehicle with its license plate and details.",
+      "Sign in and register any object — vehicle, bike, pet, luggage, keys, or anything else. Each gets a unique QR code.",
   },
   {
     number: "02",
     icon: QrCode,
-    title: "Get QR Sticker",
+    title: "Place Your QR Sticker",
     description:
-      "Download and print your unique QR code sticker. Place it on your windshield or bumper.",
+      "Print your QR code or get a weatherproof sticker. Attach it to your object — windshield, collar, bag handle, laptop lid, anywhere.",
   },
   {
     number: "03",
     icon: MessageSquare,
-    title: "Receive Messages",
+    title: "Get Messages Instantly",
     description:
-      "Anyone who scans your QR code can leave you a message — no app download required.",
+      "Anyone who scans your QR can message you — no account, no app download required.",
   },
 ];
 
@@ -43,7 +43,7 @@ const features = [
     icon: SmartphoneNfc,
     title: "No App Required",
     description:
-      "People just scan the QR code in their phone's camera. No downloads, no account needed to leave a message.",
+      "People just scan the QR code with their phone camera. No downloads, no account needed to leave a message.",
   },
   {
     icon: Shield,
@@ -59,9 +59,28 @@ const features = [
   },
   {
     icon: CheckCircle2,
-    title: "Decentralized Cloud",
+    title: "Works for Anything",
     description:
-      "Built on the Internet Computer Protocol — censorship-resistant, always-on, and fully on-chain.",
+      "Vehicles, bikes, pets, luggage, electronics, keys — if it can hold a sticker, it gets a digital identity.",
+  },
+];
+
+const scenarios = [
+  {
+    emoji: "🚗",
+    text: "Stuck behind a car? Scan the code and message the owner.",
+  },
+  {
+    emoji: "🚲",
+    text: "Lost your bike? Someone scanned it and messaged you.",
+  },
+  {
+    emoji: "🐕",
+    text: "Your dog got out? The tag just got scanned.",
+  },
+  {
+    emoji: "📦",
+    text: "One app. Any object. Instant owner contact.",
   },
 ];
 
@@ -93,14 +112,18 @@ export default function LandingPage() {
                 Blockchain
               </div>
               <h1 className="text-5xl sm:text-6xl font-extrabold text-navy leading-tight mb-6">
-                Get notified.
+                Give anything a
                 <br />
-                <span className="text-primary">Save Money.</span>
+                <span className="text-primary">digital identity.</span>
               </h1>
-              <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
-                ParkPing lets anyone leave you a message about your parked
-                vehicle — no phone numbers, no apps, just a simple QR code on
-                your windshield.
+              <p className="text-lg text-muted-foreground leading-relaxed mb-4 max-w-lg">
+                Scan any QR or barcode → message the owner instantly. No app. No
+                phone number. No friction.
+              </p>
+              <p className="text-base text-muted-foreground leading-relaxed mb-8 max-w-lg">
+                Lost bike? Found pet? Blocking car? Just scan the code on the
+                object and send a message. Scanlink gives every physical thing a
+                digital voice.
               </p>
               <div className="flex flex-wrap gap-4">
                 {isAuthenticated ? (
@@ -121,7 +144,9 @@ export default function LandingPage() {
                     className="bg-primary text-white hover:bg-primary/90 px-8 rounded-full font-semibold"
                     data-ocid="hero.primary_button"
                   >
-                    {isLoggingIn ? "Signing in…" : "Get Your QR Code"}
+                    {isLoggingIn
+                      ? "Signing in…"
+                      : "Create Your First Digital ID"}
                   </Button>
                 )}
                 <a href="#how-it-works">
@@ -149,7 +174,7 @@ export default function LandingPage() {
                 <div className="absolute inset-0 -z-10 bg-teal-light rounded-[3rem] opacity-60 scale-110" />
                 <img
                   src="/assets/uploads/image-019d1fed-ee1d-770d-9936-19fbb9f174b8-1.png"
-                  alt="Car with QR sticker and person scanning with phone"
+                  alt="Object with QR sticker and person scanning with phone"
                   className="w-full max-w-md rounded-3xl shadow-card"
                 />
                 <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white rounded-full px-5 py-2 shadow-card text-sm font-semibold text-navy whitespace-nowrap">
@@ -199,8 +224,7 @@ export default function LandingPage() {
           >
             <h2 className="text-4xl font-bold text-navy mb-4">How It Works</h2>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Three simple steps to never miss an important message about your
-              vehicle again.
+              Three simple steps to give any physical object a digital identity.
             </p>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -231,6 +255,43 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Scenarios */}
+      <section className="py-16 px-4 sm:px-6 bg-teal-light/30">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-10"
+          >
+            <h2 className="text-3xl font-bold text-navy mb-3">
+              Works for every situation
+            </h2>
+            <p className="text-muted-foreground max-w-lg mx-auto">
+              From parking disputes to lost pets — Scanlink handles it all.
+            </p>
+          </motion.div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {scenarios.map((s, i) => (
+              <motion.div
+                key={s.text}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+                className="bg-white rounded-2xl p-6 shadow-card border border-border"
+              >
+                <div className="text-3xl mb-3">{s.emoji}</div>
+                <p className="text-sm text-navy font-medium leading-relaxed">
+                  {s.text}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
       <section
         id="features"
@@ -246,11 +307,10 @@ export default function LandingPage() {
             className="text-center mb-14"
           >
             <h2 className="text-4xl font-bold text-white mb-4">
-              Why ParkPing?
+              Why Scanlink?
             </h2>
             <p className="text-lg text-white/60 max-w-xl mx-auto">
-              Private. Simple. Decentralized. Everything you need, nothing you
-              don't.
+              Private. Simple. Works for everything.
             </p>
           </motion.div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -292,11 +352,10 @@ export default function LandingPage() {
         >
           <div className="bg-gradient-to-br from-primary to-primary/80 rounded-3xl p-12 shadow-card">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              Ready to protect your vehicle?
+              Ready to give your stuff a digital identity?
             </h2>
             <p className="text-white/80 mb-8">
-              Join ParkPing and never miss an important parking notification
-              again.
+              Join Scanlink — it&apos;s free to start.
             </p>
             <Button
               size="lg"
@@ -310,7 +369,7 @@ export default function LandingPage() {
                 <Link to="/dashboard">Open Dashboard</Link>
               ) : (
                 <span>
-                  {isLoggingIn ? "Signing in…" : "Get Your Free QR Code"}
+                  {isLoggingIn ? "Signing in…" : "Get Your Free Digital ID"}
                 </span>
               )}
             </Button>

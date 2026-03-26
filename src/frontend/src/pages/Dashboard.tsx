@@ -13,14 +13,20 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@tanstack/react-router";
 import {
+  Bike,
+  Briefcase,
   Car,
   ChevronDown,
   ChevronRight,
   ChevronUp,
   Info,
+  Key,
+  Laptop,
   Loader2,
   LogIn,
   MessageSquare,
+  PawPrint,
+  Tag,
   User,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -33,8 +39,28 @@ import {
   useGetCallerUserProfile,
   useGetMyVehicles,
   useGetUnreadMessages,
+  useGetVehicleCategories,
   useUpdateCallerUserProfile,
 } from "../hooks/useQueries";
+
+function getCategoryIcon(category: string) {
+  switch (category) {
+    case "Bicycle / Scooter":
+      return Bike;
+    case "Pet / Animal":
+      return PawPrint;
+    case "Luggage / Bag":
+      return Briefcase;
+    case "Electronics":
+      return Laptop;
+    case "Keys / Personal Item":
+      return Key;
+    case "Vehicle":
+      return Car;
+    default:
+      return Tag;
+  }
+}
 
 function UnreadBadge({
   vehicleId,
@@ -69,7 +95,6 @@ function ProfileEditor({ profile }: { profile: UserProfileFull }) {
 
   const updateProfile = useUpdateCallerUserProfile();
 
-  // Sync form when profile data changes (after invalidation)
   useEffect(() => {
     setName(profile.name ?? "");
     setEmail(profile.email ?? "");
@@ -120,7 +145,6 @@ function ProfileEditor({ profile }: { profile: UserProfileFull }) {
       className="bg-white rounded-2xl border border-border shadow-card overflow-hidden mt-8"
       data-ocid="profile.card"
     >
-      {/* Header / toggle */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -159,7 +183,6 @@ function ProfileEditor({ profile }: { profile: UserProfileFull }) {
             <form onSubmit={handleSubmit} className="px-6 pb-6">
               <div className="border-t border-border mb-6" />
 
-              {/* Personal info */}
               <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-4">
                 Personal Information
               </p>
@@ -218,7 +241,6 @@ function ProfileEditor({ profile }: { profile: UserProfileFull }) {
                 </div>
               </div>
 
-              {/* Mailing address */}
               <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-4">
                 Mailing Address
               </p>
@@ -347,6 +369,7 @@ export default function Dashboard() {
 
   const { data: vehicles, isLoading: vehiclesLoading } = useGetMyVehicles();
   const { data: unreadMessages = [] } = useGetUnreadMessages();
+  const { data: categoryMap } = useGetVehicleCategories();
   const {
     isLoading: profileLoading,
     isFetched: profileFetched,
@@ -374,7 +397,7 @@ export default function Dashboard() {
               Sign in to continue
             </h1>
             <p className="text-muted-foreground mb-8">
-              Access your vehicle dashboard and manage QR codes.
+              Access your objects and manage QR codes.
             </p>
             <Button
               onClick={login}
@@ -403,25 +426,24 @@ export default function Dashboard() {
         <div className="max-w-5xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 mt-6">
             <div>
-              <h1 className="text-3xl font-bold text-navy">Your Vehicles</h1>
+              <h1 className="text-3xl font-bold text-navy">My Objects</h1>
               <p className="text-muted-foreground mt-1">
                 {userProfile
                   ? `Welcome back, ${(userProfile as UserProfileFull).name}`
-                  : "Manage your registered vehicles and QR codes"}
+                  : "Manage your registered objects and QR codes"}
               </p>
             </div>
             <AddVehicleDialog />
           </div>
 
-          {/* Pricing info banner */}
           <div className="flex items-center gap-2 bg-teal-light/40 border border-primary/15 rounded-xl px-4 py-2.5 mb-8 text-sm text-muted-foreground">
             <Info className="w-4 h-4 text-primary shrink-0" />
             <span>
               Subscriptions:{" "}
               <span className="font-semibold text-navy">$9.99/yr</span> for your
-              first vehicle,{" "}
+              first object,{" "}
               <span className="font-semibold text-navy">$4.99/yr</span> for each
-              additional vehicle.
+              additional object.
             </span>
           </div>
 
@@ -442,126 +464,136 @@ export default function Dashboard() {
               data-ocid="dashboard.empty_state"
             >
               <div className="w-16 h-16 bg-teal-light rounded-2xl flex items-center justify-center mx-auto mb-5">
-                <Car className="w-8 h-8 text-primary" />
+                <Tag className="w-8 h-8 text-primary" />
               </div>
               <h2 className="text-xl font-bold text-navy mb-2">
-                No vehicles yet
+                No objects yet
               </h2>
               <p className="text-muted-foreground mb-6 max-w-xs mx-auto">
-                Register your first vehicle to get a QR code sticker for your
-                windshield.
+                Create your first Digital ID to get a QR code sticker.
               </p>
               <AddVehicleDialog />
             </motion.div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {vehicles.map((vehicle: Vehicle, idx: number) => (
-                <motion.div
-                  key={vehicle.id.toString()}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.08 }}
-                  className="bg-white rounded-2xl border border-border shadow-card overflow-hidden"
-                  data-ocid={`dashboard.item.${idx + 1}`}
-                >
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-teal-light rounded-xl flex items-center justify-center">
-                          <Car className="w-5 h-5 text-primary" />
+              {vehicles.map((vehicle: Vehicle, idx: number) => {
+                const CategoryIcon = getCategoryIcon(
+                  categoryMap?.get(vehicle.id.toString()) ?? "",
+                );
+                return (
+                  <motion.div
+                    key={vehicle.id.toString()}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.08 }}
+                    className="bg-white rounded-2xl border border-border shadow-card overflow-hidden"
+                    data-ocid={`dashboard.item.${idx + 1}`}
+                  >
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-teal-light rounded-xl flex items-center justify-center">
+                            <CategoryIcon className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-navy">
+                                {vehicle.name}
+                              </h3>
+                              <UnreadBadge
+                                vehicleId={vehicle.id}
+                                unreadMessages={unreadMessages}
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {categoryMap?.get(vehicle.id.toString()) && (
+                                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                                  {categoryMap?.get(vehicle.id.toString())}
+                                </span>
+                              )}
+                              {vehicle.licensePlate && (
+                                <p className="text-xs text-muted-foreground font-mono">
+                                  {vehicle.licensePlate}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-navy">
-                              {vehicle.name}
-                            </h3>
+                        <Link
+                          to="/dashboard/vehicle/$id"
+                          params={{ id: vehicle.id.toString() }}
+                        >
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-primary"
+                            data-ocid={`dashboard.edit_button.${idx + 1}`}
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </Button>
+                        </Link>
+                      </div>
+
+                      {vehicle.description && (
+                        <p className="text-sm text-muted-foreground mb-5 line-clamp-2">
+                          {vehicle.description}
+                        </p>
+                      )}
+
+                      <div className="flex items-end justify-between gap-4 mb-4">
+                        <div className="flex-1">
+                          <QRCodeDisplay
+                            url={`${window.location.origin}/message/${vehicle.id.toString()}`}
+                            size={120}
+                            label="Scan to message owner"
+                          />
+                        </div>
+                        <Link
+                          to="/dashboard/vehicle/$id"
+                          params={{ id: vehicle.id.toString() }}
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-primary text-primary hover:bg-primary/5 gap-2"
+                            data-ocid={`dashboard.secondary_button.${idx + 1}`}
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                            Messages
                             <UnreadBadge
                               vehicleId={vehicle.id}
                               unreadMessages={unreadMessages}
                             />
-                          </div>
-                          <p className="text-xs text-muted-foreground font-mono">
-                            {vehicle.licensePlate}
-                          </p>
-                        </div>
+                          </Button>
+                        </Link>
                       </div>
-                      <Link
-                        to="/dashboard/vehicle/$id"
-                        params={{ id: vehicle.id.toString() }}
-                      >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-primary"
-                          data-ocid={`dashboard.edit_button.${idx + 1}`}
-                        >
-                          <ChevronRight className="w-5 h-5" />
-                        </Button>
-                      </Link>
-                    </div>
 
-                    {vehicle.description && (
-                      <p className="text-sm text-muted-foreground mb-5 line-clamp-2">
-                        {vehicle.description}
-                      </p>
-                    )}
-
-                    <div className="flex items-end justify-between gap-4 mb-4">
-                      <div className="flex-1">
-                        <QRCodeDisplay
-                          url={`${window.location.origin}/message/${vehicle.id.toString()}`}
-                          size={120}
-                          label="Scan to get notified"
+                      <div className="flex items-center gap-2 pt-3 border-t border-border">
+                        <PrintQRButton
+                          vehicleName={vehicle.name}
+                          licensePlate={vehicle.licensePlate}
+                          vehicleId={vehicle.id.toString()}
+                          className="flex-1 border-border text-foreground hover:text-primary hover:border-primary"
+                        />
+                        <RequestStickerDialog
+                          vehicleId={vehicle.id}
+                          vehicleName={vehicle.name}
+                          userProfile={userProfile as UserProfileFull | null}
+                        />
+                        <AssignQRDialog
+                          vehicles={vehicles as Vehicle[]}
+                          defaultVehicleId={vehicle.id}
                         />
                       </div>
-                      <Link
-                        to="/dashboard/vehicle/$id"
-                        params={{ id: vehicle.id.toString() }}
-                      >
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-primary text-primary hover:bg-primary/5 gap-2"
-                          data-ocid={`dashboard.secondary_button.${idx + 1}`}
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                          Messages
-                          <UnreadBadge
-                            vehicleId={vehicle.id}
-                            unreadMessages={unreadMessages}
-                          />
-                        </Button>
-                      </Link>
-                    </div>
 
-                    {/* QR Actions */}
-                    <div className="flex items-center gap-2 pt-3 border-t border-border">
-                      <PrintQRButton
-                        vehicleName={vehicle.name}
-                        licensePlate={vehicle.licensePlate}
-                        vehicleId={vehicle.id.toString()}
-                        className="flex-1 border-border text-foreground hover:text-primary hover:border-primary"
-                      />
-                      <RequestStickerDialog
-                        vehicleId={vehicle.id}
-                        vehicleName={vehicle.name}
-                        userProfile={userProfile as UserProfileFull | null}
-                      />
-                      <AssignQRDialog
-                        vehicles={vehicles as Vehicle[]}
-                        defaultVehicleId={vehicle.id}
-                      />
+                      <AssignedQRSection vehicleId={vehicle.id} />
                     </div>
-
-                    {/* Assigned QR Section */}
-                    <AssignedQRSection vehicleId={vehicle.id} />
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </div>
           )}
 
-          {/* Profile Editor — only for authenticated users with an existing profile */}
           {isAuthenticated &&
             userProfile !== null &&
             userProfile !== undefined && (

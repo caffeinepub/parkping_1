@@ -311,7 +311,7 @@ function AdminQRCodesTab() {
     win.document.write(`
       <html>
         <head>
-          <title>ParkPing QR Codes</title>
+          <title>ScanLink QR Codes</title>
           <style>
             body { margin: 0; padding: 20px; font-family: monospace; }
             .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }

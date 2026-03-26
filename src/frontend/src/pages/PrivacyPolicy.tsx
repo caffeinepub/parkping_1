@@ -17,7 +17,7 @@ export default function PrivacyPolicy() {
               1. Overview
             </h2>
             <p className="text-muted-foreground leading-relaxed">
-              ParkPing is a decentralized application built on the Internet
+              ScanLink is a decentralized application built on the Internet
               Computer Protocol (ICP). We are committed to protecting your
               privacy. This Privacy Policy explains what information we collect,
               how we use it, and your rights regarding your data.
@@ -44,7 +44,7 @@ export default function PrivacyPolicy() {
               <li>
                 <strong>Internet Identity:</strong> We use your ICP Internet
                 Identity principal as a unique identifier. No passwords are
-                stored by ParkPing.
+                stored by ScanLink.
               </li>
               <li>
                 <strong>Shipping address:</strong> If you request a physical QR
@@ -53,7 +53,7 @@ export default function PrivacyPolicy() {
               </li>
               <li>
                 <strong>Payment information:</strong> Payment details are
-                processed securely by Stripe and are never stored on ParkPing
+                processed securely by Stripe and are never stored on ScanLink
                 systems.
               </li>
             </ul>
@@ -64,7 +64,7 @@ export default function PrivacyPolicy() {
               3. How We Use Your Information
             </h2>
             <ul className="list-disc list-inside space-y-2 text-muted-foreground leading-relaxed">
-              <li>To operate and provide the ParkPing service.</li>
+              <li>To operate and provide the ScanLink service.</li>
               <li>To deliver QR stickers to your shipping address.</li>
               <li>To process subscription payments via Stripe.</li>
               <li>
@@ -133,10 +133,10 @@ export default function PrivacyPolicy() {
               your dashboard. To request full deletion of your account and
               associated data, please contact us at{" "}
               <a
-                href="mailto:support@parkping.app"
+                href="mailto:support@scanlink.app"
                 className="text-primary hover:underline"
               >
-                support@parkping.app
+                support@scanlink.app
               </a>
               .
             </p>
@@ -148,7 +148,7 @@ export default function PrivacyPolicy() {
             </h2>
             <p className="text-muted-foreground leading-relaxed">
               We may update this Privacy Policy from time to time. Continued use
-              of ParkPing after changes are posted constitutes your acceptance
+              of ScanLink after changes are posted constitutes your acceptance
               of the updated policy.
             </p>
           </div>
@@ -158,10 +158,10 @@ export default function PrivacyPolicy() {
             <p className="text-muted-foreground leading-relaxed">
               For privacy-related questions, email us at{" "}
               <a
-                href="mailto:support@parkping.app"
+                href="mailto:support@scanlink.app"
                 className="text-primary hover:underline"
               >
-                support@parkping.app
+                support@scanlink.app
               </a>
               .
             </p>

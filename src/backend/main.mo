@@ -59,6 +59,7 @@ actor {
     country : ?Text;
   };
 
+  // Vehicle represents any physical object (category stored separately for upgrade compatibility)
   type Vehicle = {
     id : VehicleId;
     owner : Principal;
@@ -172,21 +173,23 @@ actor {
   stable var stripeSecretKey : Text = "";
   stable var stripeAllowedCountries : [Text] = ["US", "CA", "GB", "AU"];
 
-  // Stable backup arrays for data maps — serialized in preupgrade, restored in postupgrade.
+  // Stable backup arrays for data maps
   stable var vehiclesEntries : [(VehicleId, Vehicle)] = [];
   stable var messagesEntries : [(MessageId, Message)] = [];
   stable var userProfilesEntries : [(Principal, UserProfile)] = [];
   stable var stickerRequestsEntries : [(StickerRequestId, StickerRequest)] = [];
   stable var userProfileDetailsEntries : [(Principal, UserProfileDetails)] = [];
   stable var printableQRCodesEntries : [(PrintableQRCodeId, PrintableQRCode)] = [];
+  stable var vehicleCategoriesEntries : [(VehicleId, Text)] = [];
 
-  // In-memory maps — restored from stable arrays on upgrade.
+  // In-memory maps
   let vehicles = Map.fromArray<VehicleId, Vehicle>(vehiclesEntries);
   let messages = Map.fromArray<MessageId, Message>(messagesEntries);
   let userProfiles = Map.fromArray<Principal, UserProfile>(userProfilesEntries);
   let stickerRequests = Map.fromArray<StickerRequestId, StickerRequest>(stickerRequestsEntries);
   let userProfileDetails = Map.fromArray<Principal, UserProfileDetails>(userProfileDetailsEntries);
   let printableQRCodes = Map.fromArray<PrintableQRCodeId, PrintableQRCode>(printableQRCodesEntries);
+  let vehicleCategories = Map.fromArray<VehicleId, Text>(vehicleCategoriesEntries);
 
   // HTTP transform for Stripe outcalls
   public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
@@ -226,10 +229,10 @@ actor {
     await Stripe.getSessionStatus(getStripeConfiguration(), sessionId, transform);
   };
 
-  // Vehicle registration
+  // Register any object (vehicle, pet, bike, luggage, etc.)
   public shared ({ caller }) func registerVehicle(name : Text, description : Text, licensePlate : Text) : async VehicleId {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only authenticated users can add vehicles");
+      Runtime.trap("Unauthorized: Only authenticated users can register objects");
     };
     let vehicleId = nextVehicleId;
     let vehicle : Vehicle = {
@@ -240,14 +243,34 @@ actor {
       licensePlate;
     };
     vehicles.add(vehicleId, vehicle);
+    vehicleCategories.add(vehicleId, "Vehicle");
     nextVehicleId += 1;
     vehicleId;
   };
 
-  // Add message to vehicle
+  // Register object with category
+  public shared ({ caller }) func registerObject(name : Text, description : Text, identifier : Text, category : Text) : async VehicleId {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can register objects");
+    };
+    let vehicleId = nextVehicleId;
+    let vehicle : Vehicle = {
+      id = vehicleId;
+      owner = caller;
+      name;
+      description;
+      licensePlate = identifier;
+    };
+    vehicles.add(vehicleId, vehicle);
+    vehicleCategories.add(vehicleId, category);
+    nextVehicleId += 1;
+    vehicleId;
+  };
+
+  // Add message to object
   public shared ({ caller }) func addMessage(input : MessageRequest) : async MessageId {
     let vehicle = switch (vehicles.get(input.vehicleId)) {
-      case (null) { Runtime.trap("Vehicle not found!") };
+      case (null) { Runtime.trap("Object not found!") };
       case (?vehicle) { vehicle };
     };
     let messageId = nextMessageId;
@@ -265,17 +288,17 @@ actor {
     messageId;
   };
 
-  // Delete vehicle
+  // Delete object
   public shared ({ caller }) func deleteVehicle(vehicleId : VehicleId) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Must be authenticated to delete own vehicle");
+      Runtime.trap("Unauthorized: Must be authenticated to delete own object");
     };
     let vehicle = switch (vehicles.get(vehicleId)) {
-      case (null) { Runtime.trap("Vehicle not found!") };
+      case (null) { Runtime.trap("Object not found!") };
       case (?vehicle) { vehicle };
     };
     if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only the vehicle owner or admin can delete this vehicle");
+      Runtime.trap("Unauthorized: Only the owner or admin can delete this object");
     };
     vehicles.remove(vehicleId);
   };
@@ -287,19 +310,19 @@ actor {
       case (?message) { message };
     };
     let vehicle = switch (vehicles.get(message.vehicleId)) {
-      case (null) { Runtime.trap("Vehicle not found!") };
+      case (null) { Runtime.trap("Object not found!") };
       case (?vehicle) { vehicle };
     };
     if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only the vehicle owner or admin can delete messages");
+      Runtime.trap("Unauthorized: Only the owner or admin can delete messages");
     };
     messages.remove(messageId);
   };
 
-  // Get unread messages for owner across all vehicles
+  // Get unread messages for owner
   public query ({ caller }) func getUnreadMessages() : async [Message] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only the vehicle owner can see unread messages");
+      Runtime.trap("Unauthorized: Only the owner can see unread messages");
     };
     let myVehicleIds = vehicles.values().toArray().filter(func(v) { v.owner == caller }).sort().map(func(v) { v.id });
     messages.values().toArray().filter(
@@ -307,46 +330,46 @@ actor {
     ).filter(func(m) { not m.isRead }).sort();
   };
 
-  // Get all vehicles for owner
+  // Get all objects for owner
   public query ({ caller }) func getMyVehicles() : async [Vehicle] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Must be a user to own vehicles");
+      Runtime.trap("Unauthorized: Must be a user to own objects");
     };
     vehicles.values().toArray().filter(func(v) { v.owner == caller }).sort();
   };
 
-  // Get specific vehicle
+  // Get specific object
   public query ({ caller }) func getVehicle(vehicleId : VehicleId) : async ?Vehicle {
     let vehicle = switch (vehicles.get(vehicleId)) {
       case (null) { return null };
       case (?vehicle) { vehicle };
     };
     if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only the vehicle owner or admin can view this vehicle");
+      Runtime.trap("Unauthorized: Only the owner or admin can view this object");
     };
     ?vehicle;
   };
 
-  // Get all messages for vehicle
+  // Get all messages for object
   public query ({ caller }) func getAllMessagesForVehicle(vehicleId : VehicleId) : async [Message] {
     let vehicle = switch (vehicles.get(vehicleId)) {
-      case (null) { Runtime.trap("Vehicle not found!") };
+      case (null) { Runtime.trap("Object not found!") };
       case (?vehicle) { vehicle };
     };
     if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only the vehicle owner or admin can view messages");
+      Runtime.trap("Unauthorized: Only the owner or admin can view messages");
     };
     messages.values().toArray().filter(func(m) { m.vehicleId == vehicleId }).sort();
   };
 
-  // Get unread messages for vehicle
+  // Get unread messages for object
   public query ({ caller }) func getUnreadMessagesForVehicle(vehicleId : VehicleId) : async [Message] {
     let vehicle = switch (vehicles.get(vehicleId)) {
-      case (null) { Runtime.trap("Vehicle not found!") };
+      case (null) { Runtime.trap("Object not found!") };
       case (?vehicle) { vehicle };
     };
     if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only the vehicle owner or admin can view unread messages");
+      Runtime.trap("Unauthorized: Only the owner or admin can view unread messages");
     };
     messages.values().toArray().filter(
       func(m) { m.vehicleId == vehicleId and not m.isRead }
@@ -360,11 +383,11 @@ actor {
       case (?message) { message };
     };
     let vehicle = switch (vehicles.get(message.vehicleId)) {
-      case (null) { Runtime.trap("Vehicle not found!") };
+      case (null) { Runtime.trap("Object not found!") };
       case (?vehicle) { vehicle };
     };
     if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only the vehicle owner or admin can mark messages as read");
+      Runtime.trap("Unauthorized: Only the owner or admin can mark messages as read");
     };
     let updatedMessage : Message = {
       id = message.id;
@@ -378,7 +401,7 @@ actor {
     messages.add(messageId, updatedMessage);
   };
 
-  // Get unread messages for owner
+  // Get unread messages for owner (by principal)
   public query ({ caller }) func getUnreadMessagesForOwner(owner : Principal) : async [Message] {
     if (caller != owner and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Can only view your own unread messages");
@@ -389,20 +412,29 @@ actor {
     ).filter(func(m) { not m.isRead }).sort();
   };
 
-  // Get all vehicles for user
+  // Get all objects for user
   public query ({ caller }) func getAllVehiclesForUser(user : Principal) : async [Vehicle] {
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own vehicles");
+      Runtime.trap("Unauthorized: Can only view your own objects");
     };
     vehicles.values().toArray().filter(func(v) { v.owner == user }).sort();
   };
 
-  // Get all vehicles - admin only
+  // Get all objects - admin only
   public query ({ caller }) func getAllVehicles() : async [Vehicle] {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admin can view all vehicles");
+      Runtime.trap("Unauthorized: Only admin can view all objects");
     };
     vehicles.values().toArray().sort();
+  };
+
+  // Get categories for caller's objects
+  public query ({ caller }) func getVehicleCategories() : async [(VehicleId, Text)] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can access object categories");
+    };
+    let myIds = vehicles.values().toArray().filter(func(v) { v.owner == caller }).map(func(v) { v.id });
+    vehicleCategories.entries().toArray().filter(func((id, _)) { myIds.any(func(vid) { vid == id }) });
   };
 
   // Get admin stats
@@ -488,7 +520,7 @@ actor {
     userProfiles.add(caller, { name; email });
   };
 
-  // Update full profile including phone and mailing address
+  // Update full profile
   public shared ({ caller }) func updateCallerUserProfile(
     name : Text,
     email : Text,
@@ -510,14 +542,14 @@ actor {
   // Sticker request
   public shared ({ caller }) func requestSticker(input : StickerRequestInput) : async StickerRequestId {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only vehicle owners can request stickers");
+      Runtime.trap("Unauthorized: Only owners can request stickers");
     };
     let vehicle = switch (vehicles.get(input.vehicleId)) {
-      case (null) { Runtime.trap("Vehicle not found!") };
+      case (null) { Runtime.trap("Object not found!") };
       case (?vehicle) { vehicle };
     };
     if (vehicle.owner != caller) {
-      Runtime.trap("Unauthorized: Only vehicle owner can request sticker");
+      Runtime.trap("Unauthorized: Only object owner can request sticker");
     };
     let stickerRequestId = nextStickerRequestId;
     let stickerRequest : StickerRequest = {
@@ -571,7 +603,7 @@ actor {
   // Get sticker requests for current user
   public query ({ caller }) func getMyStickerRequests() : async [StickerRequest] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only vehicle owners can request stickers");
+      Runtime.trap("Unauthorized: Only owners can request stickers");
     };
     stickerRequests.values().toArray().filter(func(sr) { sr.owner == caller }).sort();
   };
@@ -594,7 +626,7 @@ actor {
       {
         id;
         uniqueIdentifier = uniqueIdentifier;
-        qrData = "https://parkping.app/assign?code=" # uniqueIdentifier;
+        qrData = "https://scanlink.app/assign?code=" # uniqueIdentifier;
         status = "generated";
         assignedVehicleId = null;
         assignedAt = null;
@@ -616,7 +648,7 @@ actor {
     let charsPool = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let poolSize = charsPool.size();
 
-    let basePrefix = if (prefix == "") { "QR" } else { prefix };
+    let basePrefix = if (prefix == "") { "SL" } else { prefix };
     let firstPart = basePrefix # "-";
     let seed = id + (Time.now() % 100000000);
 
@@ -636,7 +668,7 @@ actor {
     not printableQRCodes.values().toArray().any(func(code) { code.uniqueIdentifier == identifier });
   };
 
-  // Assign QR code to vehicle
+  // Assign QR code to object
   public shared ({ caller }) func assignPrintableQRCode(uniqueIdentifier : Text, vehicleId : VehicleId) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can assign QR codes");
@@ -653,11 +685,11 @@ actor {
         let assignedVehicle = vehicles.get(vehicleId);
         switch (assignedVehicle) {
           case (null) {
-            Runtime.trap("Vehicle not found!");
+            Runtime.trap("Object not found!");
           };
           case (?vehicle) {
             if (vehicle.owner != caller) {
-              Runtime.trap("Unauthorized: Only the vehicle owner can assign QR codes");
+              Runtime.trap("Unauthorized: Only the object owner can assign QR codes");
             };
 
             let updatedQRCode : PrintableQRCode = {
@@ -708,13 +740,13 @@ actor {
     printableQRCodes.values().toArray().sort();
   };
 
-  // Get assigned QR code for vehicle
+  // Get assigned QR code for object
   public query ({ caller }) func getAssignedQRForVehicle(vehicleId : VehicleId) : async ?PrintableQRCode {
     switch (vehicles.get(vehicleId)) {
-      case (null) { Runtime.trap("Vehicle not found!") };
+      case (null) { Runtime.trap("Object not found!") };
       case (?vehicle) {
         if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: Only the vehicle owner or admin can view QR codes");
+          Runtime.trap("Unauthorized: Only the owner or admin can view QR codes");
         };
         printableQRCodes.values().toArray().find(func(qrCode) { qrCode.assignedVehicleId == ?vehicleId and qrCode.status == "assigned" });
       };
@@ -729,6 +761,7 @@ actor {
     stickerRequestsEntries := stickerRequests.toArray();
     userProfileDetailsEntries := userProfileDetails.toArray();
     printableQRCodesEntries := printableQRCodes.toArray();
+    vehicleCategoriesEntries := vehicleCategories.toArray();
     authAdminAssigned := accessControlState.adminAssigned;
     authUserRolesEntries := accessControlState.userRoles.toArray();
   };
@@ -741,6 +774,7 @@ actor {
     stickerRequestsEntries := [];
     userProfileDetailsEntries := [];
     printableQRCodesEntries := [];
+    vehicleCategoriesEntries := [];
     authUserRolesEntries := [];
   };
 };

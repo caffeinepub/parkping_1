@@ -124,6 +124,10 @@ export default function AddVehicleDialog() {
   const { mutateAsync: createCheckoutSession } = useCreateCheckoutSession();
   const { data: vehicles } = useGetMyVehicles();
 
+  const currentCount = vehicles?.length ?? 0;
+  const isAtLimit = currentCount >= 10;
+  const isFirstObject = currentCount === 0;
+
   const extraField = category ? getExtraField(category) : null;
 
   const canSubmit =
@@ -141,40 +145,46 @@ export default function AddVehicleDialog() {
         identifier: identifier.trim().toUpperCase(),
         category,
       });
-      toast.success("Digital ID created!");
-
-      const currentCount = vehicles?.length ?? 0;
-      const isFirst = currentCount === 0;
-      const shoppingItem: ShoppingItem = {
-        currency: "usd",
-        productName: isFirst
-          ? "Scanlink Annual Subscription - First Object"
-          : "Scanlink Annual Subscription - Additional Object",
-        productDescription: isFirst
-          ? "Annual subscription for your first object on Scanlink"
-          : "Annual subscription for an additional object on Scanlink",
-        priceInCents: isFirst ? BigInt(999) : BigInt(499),
-        quantity: BigInt(1),
-      };
-
-      setRedirecting(true);
-      setOpen(false);
-
-      try {
-        const session = await createCheckoutSession([shoppingItem]);
-        if (!session?.url) throw new Error("Stripe session missing url");
-        window.location.href = session.url;
-      } catch (_err) {
-        setRedirecting(false);
-        toast.error("Could not start payment. Your object was saved.");
-      }
+      toast.success("Digital Identity created!");
 
       setName("");
       setDescription("");
       setIdentifier("");
       setCategory("");
-    } catch {
-      toast.error("Failed to create Digital ID.");
+      setOpen(false);
+
+      // Only charge on first object (subscription activation)
+      if (isFirstObject) {
+        const shoppingItem: ShoppingItem = {
+          currency: "usd",
+          productName: "ScanLink Annual Subscription",
+          productDescription:
+            "$9.99/year — create up to 10 Digital Identities for your objects",
+          priceInCents: BigInt(999),
+          quantity: BigInt(1),
+        };
+
+        setRedirecting(true);
+        try {
+          const session = await createCheckoutSession([shoppingItem]);
+          if (!session?.url) throw new Error("Stripe session missing url");
+          window.location.href = session.url;
+        } catch (_err) {
+          setRedirecting(false);
+          toast.error(
+            "Could not start payment. Your Digital Identity was saved.",
+          );
+        }
+      }
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (msg.includes("Limit reached")) {
+        toast.error(
+          "You have reached the 10 Digital ID limit for your account.",
+        );
+      } else {
+        toast.error("Failed to create Digital Identity.");
+      }
     }
   };
 
@@ -192,21 +202,33 @@ export default function AddVehicleDialog() {
         <DialogTrigger asChild>
           <Button
             className="bg-primary text-white hover:bg-primary/90 gap-2"
+            disabled={isAtLimit}
             data-ocid="vehicles.open_modal_button"
           >
             <Plus className="w-4 h-4" />
-            Create Digital ID
+            {isAtLimit ? "Limit Reached (10/10)" : "Create Digital Identity"}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-lg" data-ocid="vehicles.dialog">
           <DialogHeader>
-            <DialogTitle>Create Digital ID</DialogTitle>
+            <DialogTitle>Create Digital Identity</DialogTitle>
           </DialogHeader>
           <div className="bg-teal-light/50 border border-primary/20 rounded-lg px-4 py-2.5 text-sm text-muted-foreground">
-            💳 <span className="font-medium text-navy">$9.99/yr</span> for your
-            first object ·{" "}
-            <span className="font-medium text-navy">$4.99/yr</span> for each
-            additional
+            💳{" "}
+            {isFirstObject ? (
+              <>
+                <span className="font-medium text-navy">$9.99/year</span> per
+                account — includes up to{" "}
+                <span className="font-medium text-navy">
+                  10 Digital Identities
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-navy">{currentCount}/10</span>{" "}
+                Digital Identities used on your subscription
+              </>
+            )}
           </div>
           <form onSubmit={handleSubmit} className="space-y-4 py-2">
             {/* Category selector */}
@@ -329,8 +351,10 @@ export default function AddVehicleDialog() {
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Creating…
                   </>
+                ) : isFirstObject ? (
+                  "Create & Subscribe ($9.99/yr)"
                 ) : (
-                  "Create & Pay"
+                  "Create Digital Identity"
                 )}
               </Button>
             </DialogFooter>

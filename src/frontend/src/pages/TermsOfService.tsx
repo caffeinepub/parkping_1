@@ -28,10 +28,10 @@ export default function TermsOfService() {
               2. Description of Service
             </h2>
             <p className="text-muted-foreground leading-relaxed">
-              ScanLink is a decentralized digital identity platform built on the
-              Internet Computer Protocol (ICP). It allows vehicle owners to
-              register their vehicles, receive unique QR codes, and receive
-              anonymous messages from anyone who scans those codes.
+              ScanLink is a decentralized Digital Identity platform built on the
+              Internet Computer Protocol (ICP). It allows anyone to register any
+              physical object, receive unique QR codes, and receive anonymous
+              messages from anyone who scans those codes.
             </p>
           </div>
 
@@ -72,12 +72,13 @@ export default function TermsOfService() {
             </h2>
             <ul className="list-disc list-inside space-y-2 text-muted-foreground leading-relaxed">
               <li>
-                Vehicle registration requires a subscription: $9.99/year for the
-                first vehicle, $4.99/year for each additional vehicle.
+                ScanLink requires a subscription of $9.99/year per user account,
+                which allows you to create up to 10 unique Digital IDs for your
+                objects.
               </li>
               <li>
-                Physical QR stickers: one free per vehicle; replacements are
-                $9.99 plus shipping.
+                Physical QR stickers: one free per subscription; replacements
+                are $9.99 plus shipping.
               </li>
               <li>All payments are processed securely through Stripe.</li>
               <li>

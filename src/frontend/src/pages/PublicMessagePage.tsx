@@ -3,165 +3,156 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useParams } from "@tanstack/react-router";
-import { CheckCircle2, Loader2, QrCode } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { CheckCircle2, Loader2, MessageSquare, QrCode } from "lucide-react";
 import { useState } from "react";
-import { useAddMessage } from "../hooks/useQueries";
+import { toast } from "sonner";
+import { useActor } from "../hooks/useActor";
+import { useGetMyVehicles } from "../hooks/useQueries";
+
+const SPAM_KEY_PREFIX = "scanlink_sent_";
 
 export default function PublicMessagePage() {
-  const { vehicleId } = useParams({ from: "/message/$vehicleId" });
+  const params = useParams({ from: "/message/$vehicleId" });
+  const vehicleId = BigInt(params.vehicleId);
+  const { actor } = useActor();
+
   const [senderName, setSenderName] = useState("");
-  const [messageText, setMessageText] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const { mutateAsync, isPending } = useAddMessage();
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  // Spam guard: check if already sent from this session
+  const spamKey = `${SPAM_KEY_PREFIX}${params.vehicleId}`;
+  const alreadySent = sessionStorage.getItem(spamKey) === "1";
+
+  if (alreadySent && !sent) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+        <div className="max-w-sm w-full text-center">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <QrCode className="w-8 h-8 text-amber-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-navy mb-3">Already sent</h1>
+          <p className="text-muted-foreground">
+            To send another message, please scan the QR code again.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (sent) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+        <div className="max-w-sm w-full text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-8 h-8 text-green-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-navy mb-3">Message sent!</h1>
+          <p className="text-muted-foreground">
+            The owner has been notified. To send another message, please scan
+            the QR code again.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim()) return;
+    if (!message.trim()) return;
     try {
-      await mutateAsync({
-        vehicleId: BigInt(vehicleId),
-        senderName: senderName.trim() || null,
-        messageText: messageText.trim(),
+      setSending(true);
+      await actor!.addMessage({
+        vehicleId,
+        senderName: senderName.trim() || undefined,
+        message: message.trim(),
       });
-      setSubmitted(true);
-    } catch {
-      // silently keep form on error
+      sessionStorage.setItem(spamKey, "1");
+      setSent(true);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to send message. Please try again.");
+    } finally {
+      setSending(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-10">
-      <a href="/" className="flex items-center gap-2 mb-10">
-        <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-          <QrCode className="w-5 h-5 text-white" />
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-12">
+      <div className="max-w-sm w-full">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <img
+              src="/assets/generated/scanlink-logo-transparent.dim_120x120.png"
+              alt="ScanLink"
+              className="h-10 w-auto"
+            />
+            <span className="font-bold text-xl text-navy">ScanLink</span>
+          </div>
+          <div className="w-14 h-14 bg-teal-light rounded-full flex items-center justify-center mx-auto mb-4">
+            <MessageSquare className="w-7 h-7 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold text-navy mb-2">
+            Send a message to the owner
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Your message will be delivered privately. No account needed.
+          </p>
         </div>
-        <span className="font-bold text-xl text-navy">Scanlink</span>
-      </a>
 
-      <AnimatePresence mode="wait">
-        {submitted ? (
-          <motion.div
-            key="success"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="w-full max-w-sm text-center"
-            data-ocid="public_message.success_state"
-          >
-            <div className="w-20 h-20 bg-teal-light rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle2 className="w-10 h-10 text-primary" />
-            </div>
-            <h1 className="text-2xl font-bold text-navy mb-3">Message Sent!</h1>
-            <p className="text-muted-foreground leading-relaxed">
-              Your message was delivered to the owner. They&apos;ll be notified
-              on Scanlink.
-            </p>
-            <div className="mt-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <QrCode className="w-4 h-4 flex-shrink-0" />
-              <span>
-                To send another message, please scan the QR code again.
-              </span>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="form"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="w-full max-w-sm"
-            data-ocid="public_message.section"
-          >
-            <div className="bg-white rounded-3xl shadow-card border border-border p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-teal-light rounded-xl flex items-center justify-center">
-                  <QrCode className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold text-navy">
-                    Leave a message
-                  </h1>
-                  <p className="text-xs text-muted-foreground">
-                    For this object&apos;s owner
-                  </p>
-                </div>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-1">
-                  <Label htmlFor="sender-name" className="text-sm">
-                    Your name{" "}
-                    <span className="text-muted-foreground">(optional)</span>
-                  </Label>
-                  <Input
-                    id="sender-name"
-                    placeholder="e.g. John"
-                    value={senderName}
-                    onChange={(e) => setSenderName(e.target.value)}
-                    className="rounded-xl"
-                    data-ocid="public_message.input"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="message-text" className="text-sm">
-                    Message <span className="text-destructive">*</span>
-                  </Label>
-                  <Textarea
-                    id="message-text"
-                    placeholder="e.g. I found your lost item! 👋"
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    rows={4}
-                    required
-                    className="rounded-xl resize-none"
-                    data-ocid="public_message.textarea"
-                  />
-                </div>
-
-                {isPending && (
-                  <div
-                    className="flex items-center gap-2 text-sm text-muted-foreground"
-                    data-ocid="public_message.loading_state"
-                  >
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Sending your message…
-                  </div>
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={!messageText.trim() || isPending}
-                  className="w-full bg-primary text-white hover:bg-primary/90 rounded-xl font-semibold py-3 h-auto"
-                  data-ocid="public_message.submit_button"
-                >
-                  {isPending ? "Sending…" : "Send Message"}
-                </Button>
-              </form>
-
-              <p className="text-xs text-muted-foreground text-center mt-5">
-                Messages are anonymous and stored securely on the Internet
-                Computer.
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <p className="mt-10 text-xs text-muted-foreground">
-        Powered by{" "}
-        <a
-          href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-primary transition-colors"
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-2xl shadow-card border border-border p-6 space-y-4"
         >
-          caffeine.ai
-        </a>
-      </p>
+          <div className="space-y-1.5">
+            <Label htmlFor="sender-name">
+              Your name{" "}
+              <span className="text-muted-foreground text-xs">(optional)</span>
+            </Label>
+            <Input
+              id="sender-name"
+              placeholder="e.g. Alex"
+              value={senderName}
+              onChange={(e) => setSenderName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="message">
+              Message <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              id="message"
+              placeholder="Hi, your car is blocking the driveway…"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={4}
+              required
+            />
+          </div>
+          <Button
+            type="submit"
+            disabled={!message.trim() || sending || !actor}
+            className="w-full bg-primary text-white hover:bg-primary/90 rounded-full"
+          >
+            {sending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Sending…
+              </>
+            ) : (
+              "Send Message"
+            )}
+          </Button>
+        </form>
+
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          Powered by{" "}
+          <a href="/" className="text-primary hover:underline">
+            ScanLink
+          </a>{" "}
+          — Digital Identity for anything.
+        </p>
+      </div>
     </div>
   );
 }

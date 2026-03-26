@@ -19,7 +19,7 @@ export function printQRCode({
   vehicleId: string;
 }) {
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(`${window.location.origin}/message/${vehicleId}`)}`;
-  const logoUrl = `${window.location.origin}/assets/uploads/image-019d21e8-c67a-74dd-a137-fcd8265741f1-1.png`;
+  const logoUrl = `${window.location.origin}/assets/generated/scanlink-logo-transparent.dim_120x120.png`;
 
   const printWindow = window.open("", "_blank", "width=600,height=700");
   if (!printWindow) return;
@@ -28,7 +28,7 @@ export function printQRCode({
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Scanlink QR Code — ${vehicleName}</title>
+        <title>ScanLink QR Code — ${vehicleName}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body {
@@ -56,14 +56,21 @@ export function printQRCode({
             margin-bottom: 20px;
           }
           .logo-img {
-            width: 120px;
+            width: 80px;
             height: auto;
             display: block;
+          }
+          .logo-name {
+            font-size: 18px;
+            font-weight: 800;
+            color: #1a2540;
+            margin-top: 4px;
+            letter-spacing: 0.5px;
           }
           .logo-url {
             font-size: 12px;
             color: #555;
-            margin-top: 4px;
+            margin-top: 2px;
             letter-spacing: 0.5px;
           }
           .qr img {
@@ -103,7 +110,8 @@ export function printQRCode({
       <body>
         <div class="card">
           <div class="logo-wrap">
-            <img src="${logoUrl}" alt="Scanlink" class="logo-img" />
+            <img src="${logoUrl}" alt="ScanLink" class="logo-img" />
+            <span class="logo-name">ScanLink</span>
             <span class="logo-url">www.scanlink.app</span>
           </div>
           <div class="qr">

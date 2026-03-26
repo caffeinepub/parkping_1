@@ -46,8 +46,8 @@ export default function PaymentSuccess() {
             transition={{ delay: 0.3 }}
             className="text-muted-foreground mb-8"
           >
-            Your vehicle subscription is now active. Your QR codes are ready to
-            use.
+            Your ScanLink subscription is now active. You can create up to 10
+            Digital Identities and your QR codes are ready to use.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 10 }}

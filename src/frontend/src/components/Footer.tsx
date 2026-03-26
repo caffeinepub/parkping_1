@@ -9,10 +9,10 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <span className="font-bold text-xl">Scanlink</span>
+              <span className="font-bold text-xl">ScanLink</span>
             </div>
             <p className="text-sm text-white/60 max-w-xs leading-relaxed">
-              Give anything a digital identity. Scan any QR code → instantly
+              Give anything a Digital Identity. Scan an QR code → instantly
               message the owner. Works for vehicles, bikes, pets, luggage, and
               more.
             </p>
@@ -102,7 +102,7 @@ export default function Footer() {
         <div className="mt-10 pt-8 border-t border-white/10">
           <div className="flex items-center justify-center text-xs text-white/40">
             <span>
-              © {year} Scanlink. All rights reserved. Powered by Internet
+              © {year} ScanLink. All rights reserved. Powered by Internet
               Computer Protocol (ICP) - Decentralized Blockchain.
             </span>
           </div>

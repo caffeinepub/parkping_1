@@ -440,10 +440,12 @@ export default function Dashboard() {
             <Info className="w-4 h-4 text-primary shrink-0" />
             <span>
               Subscriptions:{" "}
-              <span className="font-semibold text-navy">$9.99/yr</span> for your
-              first object,{" "}
-              <span className="font-semibold text-navy">$4.99/yr</span> for each
-              additional object.
+              <span className="font-semibold text-navy">$9.99/yr</span> per
+              account — up to{" "}
+              <span className="font-semibold text-navy">
+                10 Digital Identities
+              </span>
+              .
             </span>
           </div>
 

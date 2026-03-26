@@ -61,7 +61,7 @@ const features = [
     icon: CheckCircle2,
     title: "Works for Anything",
     description:
-      "Vehicles, bikes, pets, luggage, electronics, keys — if it can hold a sticker, it gets a digital identity.",
+      "Vehicles, bikes, pets, luggage, electronics, keys — if it can hold a sticker, it gets a Digital Identity.",
   },
 ];
 
@@ -114,15 +114,15 @@ export default function LandingPage() {
               <h1 className="text-5xl sm:text-6xl font-extrabold text-navy leading-tight mb-6">
                 Give anything a
                 <br />
-                <span className="text-primary">digital identity.</span>
+                <span className="text-primary">Digital Identity.</span>
               </h1>
               <p className="text-lg text-muted-foreground leading-relaxed mb-4 max-w-lg">
-                Scan any QR or barcode → message the owner instantly. No app. No
-                phone number. No friction.
+                Scan an QR → message the owner instantly. No app. No phone
+                number. No friction.
               </p>
               <p className="text-base text-muted-foreground leading-relaxed mb-8 max-w-lg">
                 Lost bike? Found pet? Blocking car? Just scan the code on the
-                object and send a message. Scanlink gives every physical thing a
+                object and send a message. ScanLink gives every physical thing a
                 digital voice.
               </p>
               <div className="flex flex-wrap gap-4">
@@ -224,7 +224,7 @@ export default function LandingPage() {
           >
             <h2 className="text-4xl font-bold text-navy mb-4">How It Works</h2>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Three simple steps to give any physical object a digital identity.
+              Three simple steps to give any physical object a Digital Identity.
             </p>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -269,7 +269,7 @@ export default function LandingPage() {
               Works for every situation
             </h2>
             <p className="text-muted-foreground max-w-lg mx-auto">
-              From parking disputes to lost pets — Scanlink handles it all.
+              From parking disputes to lost pets — ScanLink handles it all.
             </p>
           </motion.div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -307,7 +307,7 @@ export default function LandingPage() {
             className="text-center mb-14"
           >
             <h2 className="text-4xl font-bold text-white mb-4">
-              Why Scanlink?
+              Why ScanLink?
             </h2>
             <p className="text-lg text-white/60 max-w-xl mx-auto">
               Private. Simple. Works for everything.
@@ -352,10 +352,10 @@ export default function LandingPage() {
         >
           <div className="bg-gradient-to-br from-primary to-primary/80 rounded-3xl p-12 shadow-card">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              Ready to give your stuff a digital identity?
+              Ready to give your stuff a Digital Identity?
             </h2>
             <p className="text-white/80 mb-8">
-              Join Scanlink — it&apos;s free to start.
+              Join ScanLink — it&apos;s free to start.
             </p>
             <Button
               size="lg"

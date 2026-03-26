@@ -45,11 +45,11 @@ export default function Navbar({ transparent = false }: NavbarProps) {
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2" data-ocid="nav.link">
           <img
-            src="/assets/uploads/image-019d21e8-c67a-74dd-a137-fcd8265741f1-1.png"
-            alt="Scanlink logo"
+            src="/assets/generated/scanlink-logo-transparent.dim_120x120.png"
+            alt="ScanLink logo"
             className="h-10 w-auto"
           />
-          <span className="font-bold text-xl text-navy">Scanlink</span>
+          <span className="font-bold text-xl text-navy">ScanLink</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-8">

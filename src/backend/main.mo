@@ -253,6 +253,11 @@ actor {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only authenticated users can register objects");
     };
+    // Enforce 10 Digital IDs per user account limit
+    let existingCount = vehicles.values().toArray().filter(func(v : Vehicle) : Bool { v.owner == caller }).size();
+    if (existingCount >= 10) {
+      Runtime.trap("Limit reached: Your subscription allows up to 10 Digital IDs. Please contact support to upgrade.");
+    };
     let vehicleId = nextVehicleId;
     let vehicle : Vehicle = {
       id = vehicleId;

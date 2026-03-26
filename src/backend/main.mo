@@ -394,6 +394,29 @@ actor {
     messageLocationsMap.get(messageId);
   };
 
+  // Update object details (owner only)
+  public shared ({ caller }) func updateObject(vehicleId : VehicleId, name : Text, description : Text, identifier : Text, category : Text) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can update objects");
+    };
+    let vehicle = switch (vehicles.get(vehicleId)) {
+      case (null) { Runtime.trap("Object not found!") };
+      case (?v) { v };
+    };
+    if (vehicle.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only the owner can update this object");
+    };
+    let updated : Vehicle = {
+      id = vehicleId;
+      owner = vehicle.owner;
+      name;
+      description;
+      licensePlate = identifier;
+    };
+    vehicles.add(vehicleId, updated);
+    vehicleCategories.add(vehicleId, category);
+  };
+
   // Delete object
   public shared ({ caller }) func deleteVehicle(vehicleId : VehicleId) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {

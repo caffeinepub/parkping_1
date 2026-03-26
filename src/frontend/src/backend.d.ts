@@ -161,6 +161,7 @@ export interface backendInterface {
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
     deleteMessage(messageId: MessageId): Promise<void>;
     deleteVehicle(vehicleId: VehicleId): Promise<void>;
+    updateObject(vehicleId: VehicleId, name: string, description: string, identifier: string, category: string): Promise<void>;
     generatePrintableQRCodes(quantity: bigint, prefix: string): Promise<Array<PrintableQRCode>>;
     getAdminStats(): Promise<AdminStats>;
     getAllMessagesForVehicle(vehicleId: VehicleId): Promise<Array<Message>>;

@@ -163,6 +163,7 @@ export const idlService = IDL.Service({
     ),
   'deleteMessage' : IDL.Func([MessageId], [], []),
   'deleteVehicle' : IDL.Func([VehicleId], [], []),
+  'updateObject' : IDL.Func([VehicleId, IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
   'generatePrintableQRCodes' : IDL.Func(
       [IDL.Nat, IDL.Text],
       [IDL.Vec(PrintableQRCode)],
@@ -409,6 +410,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'deleteMessage' : IDL.Func([MessageId], [], []),
     'deleteVehicle' : IDL.Func([VehicleId], [], []),
+      'updateObject' : IDL.Func([VehicleId, IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
     'generatePrintableQRCodes' : IDL.Func(
         [IDL.Nat, IDL.Text],
         [IDL.Vec(PrintableQRCode)],

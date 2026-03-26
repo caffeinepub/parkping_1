@@ -209,6 +209,37 @@ export function useDeleteVehicle() {
     },
   });
 }
+export function useUpdateObject() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      vehicleId,
+      name,
+      description,
+      identifier,
+      category,
+    }: {
+      vehicleId: bigint;
+      name: string;
+      description: string;
+      identifier: string;
+      category: string;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      await actor.updateObject(
+        vehicleId,
+        name,
+        description,
+        identifier,
+        category,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["myVehicles"] });
+    },
+  });
+}
 export function useIsCallerAdmin() {
   const { actor, isFetching } = useActor();
   return useQuery<boolean>({

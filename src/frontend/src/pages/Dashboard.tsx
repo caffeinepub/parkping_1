@@ -1,5 +1,6 @@
 import AddVehicleDialog from "@/components/AddVehicleDialog";
 import AssignQRDialog, { AssignedQRSection } from "@/components/AssignQRDialog";
+import EditObjectDialog from "@/components/EditObjectDialog";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import PrintQRButton from "@/components/PrintQRButton";
@@ -37,6 +38,7 @@ import {
   LogIn,
   MessageSquare,
   PawPrint,
+  Pencil,
   Tag,
   Trash2,
   User,
@@ -384,6 +386,7 @@ export default function Dashboard() {
   const { data: unreadMessages = [] } = useGetUnreadMessages();
   const { data: categoryMap } = useGetVehicleCategories();
   const deleteVehicle = useDeleteVehicle();
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const {
     isLoading: profileLoading,
     isFetched: profileFetched,
@@ -432,6 +435,18 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
       <ProfileSetup open={showProfileSetup} />
+      {editingVehicle && (
+        <EditObjectDialog
+          open={!!editingVehicle}
+          onOpenChange={(val) => {
+            if (!val) setEditingVehicle(null);
+          }}
+          vehicle={editingVehicle}
+          currentCategory={
+            categoryMap?.get(editingVehicle.id.toString()) ?? "Other"
+          }
+        />
+      )}
 
       <main
         className="flex-1 pt-20 pb-16 px-4 sm:px-6"
@@ -535,19 +550,30 @@ export default function Dashboard() {
                             </div>
                           </div>
                         </div>
-                        <Link
-                          to="/dashboard/vehicle/$id"
-                          params={{ id: vehicle.id.toString() }}
-                        >
+                        <div className="flex items-center gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
                             className="text-muted-foreground hover:text-primary"
+                            onClick={() => setEditingVehicle(vehicle)}
+                            title="Edit Digital Identity"
                             data-ocid={`dashboard.edit_button.${idx + 1}`}
                           >
-                            <ChevronRight className="w-5 h-5" />
+                            <Pencil className="w-4 h-4" />
                           </Button>
-                        </Link>
+                          <Link
+                            to="/dashboard/vehicle/$id"
+                            params={{ id: vehicle.id.toString() }}
+                          >
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-primary"
+                            >
+                              <ChevronRight className="w-5 h-5" />
+                            </Button>
+                          </Link>
+                        </div>
                       </div>
 
                       {vehicle.description && (

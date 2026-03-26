@@ -229,6 +229,7 @@ export interface backendInterface {
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
     deleteMessage(messageId: MessageId): Promise<void>;
     deleteVehicle(vehicleId: VehicleId): Promise<void>;
+    updateObject(vehicleId: VehicleId, name: string, description: string, identifier: string, category: string): Promise<void>;
     generatePrintableQRCodes(quantity: bigint, prefix: string): Promise<Array<PrintableQRCode>>;
     getAdminStats(): Promise<AdminStats>;
     getAllMessagesForVehicle(vehicleId: VehicleId): Promise<Array<Message>>;
@@ -367,7 +368,21 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async generatePrintableQRCodes(arg0: bigint, arg1: string): Promise<Array<PrintableQRCode>> {
+    async updateObject(arg0: VehicleId, arg1: string, arg2: string, arg3: string, arg4: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateObject(arg0, arg1, arg2, arg3, arg4);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateObject(arg0, arg1, arg2, arg3, arg4);
+            return result;
+        }
+    }
+        async generatePrintableQRCodes(arg0: bigint, arg1: string): Promise<Array<PrintableQRCode>> {
         if (this.processError) {
             try {
                 const result = await this.actor.generatePrintableQRCodes(arg0, arg1);

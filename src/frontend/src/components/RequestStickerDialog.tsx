@@ -10,11 +10,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, Info, Package } from "lucide-react";
+import { AlertCircle, CreditCard, Info, Loader2, Package } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { UserProfileFull as UserProfile } from "../backend.d";
+import type {
+  ShoppingItem,
+  UserProfileFull as UserProfile,
+} from "../backend.d";
 import { useRequestSticker } from "../hooks/useQueries";
+import { useCreateCheckoutSession } from "../hooks/useStripe";
 
 interface RequestStickerDialogProps {
   vehicleId: bigint;
@@ -30,6 +34,7 @@ export default function RequestStickerDialog({
   trigger,
 }: RequestStickerDialogProps) {
   const [open, setOpen] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [form, setForm] = useState({
     name: (userProfile as UserProfile | null)?.name ?? "",
     addressLine1: "",
@@ -40,7 +45,9 @@ export default function RequestStickerDialog({
     country: "",
   });
 
-  const { mutateAsync: requestSticker, isPending } = useRequestSticker();
+  const { mutateAsync: requestSticker, isPending: submitting } =
+    useRequestSticker();
+  const { mutateAsync: createCheckoutSession } = useCreateCheckoutSession();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -53,10 +60,13 @@ export default function RequestStickerDialog({
     form.postcode.trim() &&
     form.country.trim();
 
+  const isPending = submitting || redirecting;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
     try {
+      // First, record the sticker request
       await requestSticker({
         vehicleId,
         name: form.name.trim(),
@@ -67,21 +77,23 @@ export default function RequestStickerDialog({
         postcode: form.postcode.trim(),
         country: form.country.trim(),
       });
-      toast.success(
-        "Your sticker request has been submitted. You will be invoiced $19.99 + shipping.",
-      );
-      setOpen(false);
-      setForm({
-        name: (userProfile as UserProfile | null)?.name ?? "",
-        addressLine1: "",
-        addressLine2: "",
-        city: "",
-        stateProvince: "",
-        postcode: "",
-        country: "",
-      });
-    } catch {
-      toast.error("Failed to submit sticker request. Please try again.");
+
+      // Then redirect to Stripe checkout for payment
+      const shoppingItem: ShoppingItem = {
+        currency: "usd",
+        productName: "ScanLink Official Sticker",
+        productDescription: `Weatherproof QR sticker for ${vehicleName} — mailed to your address`,
+        priceInCents: BigInt(1999),
+        quantity: BigInt(1),
+      };
+
+      setRedirecting(true);
+      const session = await createCheckoutSession([shoppingItem]);
+      if (!session?.url) throw new Error("Stripe session missing url");
+      window.location.href = session.url;
+    } catch (_err) {
+      setRedirecting(false);
+      toast.error("Failed to start checkout. Please try again.");
     }
   };
 
@@ -96,7 +108,7 @@ export default function RequestStickerDialog({
             data-ocid="sticker.open_modal_button"
           >
             <Package className="w-4 h-4" />
-            Request Sticker
+            Order Sticker
           </Button>
         )}
       </DialogTrigger>
@@ -104,7 +116,7 @@ export default function RequestStickerDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
-            Request Weatherproof Sticker
+            Order Weatherproof Sticker
           </DialogTitle>
           <DialogDescription>
             We&apos;ll mail a weatherproof QR sticker for{" "}
@@ -118,10 +130,9 @@ export default function RequestStickerDialog({
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
           <div>
             <span>
-              <span className="font-semibold">
-                Physical stickers cost $19.99
-              </span>{" "}
-              per sticker + shipping and applicable taxes.
+              <span className="font-semibold">$19.99 per sticker</span> +
+              shipping and applicable taxes. Payment is processed securely via
+              Stripe.
             </span>
           </div>
         </div>
@@ -233,6 +244,7 @@ export default function RequestStickerDialog({
               type="button"
               variant="ghost"
               onClick={() => setOpen(false)}
+              disabled={isPending}
               data-ocid="sticker.cancel_button"
             >
               Cancel
@@ -240,12 +252,20 @@ export default function RequestStickerDialog({
             <Button
               type="submit"
               disabled={!isValid || isPending}
-              className="bg-primary text-white hover:bg-primary/90"
+              className="bg-primary text-white hover:bg-primary/90 gap-2"
               data-ocid="sticker.submit_button"
             >
-              {isPending
-                ? "Submitting…"
-                : "Request Sticker ($19.99 + shipping)"}
+              {isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {redirecting ? "Redirecting to payment…" : "Processing…"}
+                </>
+              ) : (
+                <>
+                  <CreditCard className="w-4 h-4" />
+                  Pay $19.99 &amp; Order Sticker
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>

@@ -1,5 +1,4 @@
 import AddVehicleDialog from "@/components/AddVehicleDialog";
-import AssignQRDialog, { AssignedQRSection } from "@/components/AssignQRDialog";
 import EditObjectDialog from "@/components/EditObjectDialog";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
@@ -589,9 +588,6 @@ export default function Dashboard() {
                             size={120}
                             label="Scan to message owner"
                           />
-                          <p className="text-xs text-muted-foreground text-center mt-1">
-                            Dynamic — updates automatically
-                          </p>
                         </div>
                         <Link
                           to="/dashboard/vehicle/$id"
@@ -624,10 +620,6 @@ export default function Dashboard() {
                           vehicleId={vehicle.id}
                           vehicleName={vehicle.name}
                           userProfile={userProfile as UserProfileFull | null}
-                        />
-                        <AssignQRDialog
-                          vehicles={vehicles as Vehicle[]}
-                          defaultVehicleId={vehicle.id}
                         />
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
@@ -671,8 +663,6 @@ export default function Dashboard() {
                           </AlertDialogContent>
                         </AlertDialog>
                       </div>
-
-                      <AssignedQRSection vehicleId={vehicle.id} />
                     </div>
                   </motion.div>
                 );

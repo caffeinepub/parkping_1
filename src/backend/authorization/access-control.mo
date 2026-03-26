@@ -27,7 +27,7 @@ module {
     switch (state.userRoles.get(caller)) {
       case (?_) {};
       case (null) {
-        if (not state.adminAssigned and adminToken != "" and userProvidedToken == adminToken) {
+        if (not state.adminAssigned and userProvidedToken == adminToken) {
           state.userRoles.add(caller, #admin);
           state.adminAssigned := true;
         } else {
@@ -37,23 +37,12 @@ module {
     };
   };
 
-  // Auto-register non-anonymous callers as users if not yet in the map.
-  // This ensures users can always access the app even if initialization was skipped.
-  public func ensureRegistered(state : AccessControlState, caller : Principal) {
-    if (caller.isAnonymous()) { return };
-    switch (state.userRoles.get(caller)) {
-      case (?_) {};
-      case (null) { state.userRoles.add(caller, #user) };
-    };
-  };
-
   public func getUserRole(state : AccessControlState, caller : Principal) : UserRole {
     if (caller.isAnonymous()) { return #guest };
     switch (state.userRoles.get(caller)) {
       case (?role) { role };
       case (null) {
-        // Return guest instead of trapping so callers get a clean Unauthorized error
-        #guest;
+        Runtime.trap("User is not registered");
       };
     };
   };

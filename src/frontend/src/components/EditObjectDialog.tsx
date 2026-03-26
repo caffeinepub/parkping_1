@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Bike,
@@ -22,7 +23,11 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Vehicle } from "../backend.d";
-import { useUpdateObject } from "../hooks/useQueries";
+import {
+  useGetObjectContactInfo,
+  useSetObjectContactInfo,
+  useUpdateObject,
+} from "../hooks/useQueries";
 
 const CATEGORIES = [
   {
@@ -126,8 +131,15 @@ export default function EditObjectDialog({
   const [name, setName] = useState(vehicle.name);
   const [description, setDescription] = useState(vehicle.description);
   const [identifier, setIdentifier] = useState(vehicle.licensePlate);
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactPublic, setContactPublic] = useState(false);
 
-  // Re-sync when vehicle changes
+  const { data: existingContact } = useGetObjectContactInfo(
+    open ? vehicle.id : null,
+  );
+
+  // Re-sync when vehicle or contact info changes
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset on open
   useEffect(() => {
     setCategory(currentCategory || "Other");
@@ -136,7 +148,30 @@ export default function EditObjectDialog({
     setIdentifier(vehicle.licensePlate);
   }, [vehicle, currentCategory, open]);
 
+  useEffect(() => {
+    if (existingContact) {
+      const info = Array.isArray(existingContact)
+        ? existingContact[0]
+        : existingContact;
+      if (info) {
+        setContactName(
+          Array.isArray(info.contactName)
+            ? (info.contactName[0] ?? "")
+            : (info.contactName ?? ""),
+        );
+        setContactPhone(
+          Array.isArray(info.contactPhone)
+            ? (info.contactPhone[0] ?? "")
+            : (info.contactPhone ?? ""),
+        );
+        setContactPublic(info.contactPublic ?? false);
+      }
+    }
+  }, [existingContact]);
+
   const { mutateAsync: updateObject, isPending } = useUpdateObject();
+  const { mutateAsync: setContactInfo, isPending: savingContact } =
+    useSetObjectContactInfo();
 
   const extraField = getExtraField(category);
   const canSubmit =
@@ -155,6 +190,13 @@ export default function EditObjectDialog({
         identifier: identifier.trim(),
         category,
       });
+      // Save contact info
+      await setContactInfo({
+        vehicleId: vehicle.id,
+        contactName: contactName.trim() || null,
+        contactPhone: contactPhone.trim() || null,
+        contactPublic,
+      });
       toast.success("Digital Identity updated!");
       onOpenChange(false);
     } catch {
@@ -162,9 +204,11 @@ export default function EditObjectDialog({
     }
   };
 
+  const isSaving = isPending || savingContact;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Digital Identity</DialogTitle>
         </DialogHeader>
@@ -235,6 +279,42 @@ export default function EditObjectDialog({
             />
           </div>
 
+          {/* Contact Info */}
+          <div className="space-y-3 rounded-lg border border-border p-3 bg-muted/30">
+            <p className="text-sm font-semibold">Contact Info (optional)</p>
+            <div className="space-y-1">
+              <Label htmlFor="edit-contact-name">Contact Name</Label>
+              <Input
+                id="edit-contact-name"
+                placeholder="e.g. Alex Johnson"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="edit-contact-phone">Phone Number</Label>
+              <Input
+                id="edit-contact-phone"
+                type="tel"
+                placeholder="e.g. +1 555 000 1234"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Make contact info public</p>
+                <p className="text-xs text-muted-foreground">
+                  Shown to message senders who scan your QR
+                </p>
+              </div>
+              <Switch
+                checked={contactPublic}
+                onCheckedChange={setContactPublic}
+              />
+            </div>
+          </div>
+
           <DialogFooter>
             <Button
               type="button"
@@ -245,10 +325,10 @@ export default function EditObjectDialog({
             </Button>
             <Button
               type="submit"
-              disabled={!canSubmit || isPending}
+              disabled={!canSubmit || isSaving}
               className="bg-primary text-white hover:bg-primary/90"
             >
-              {isPending ? (
+              {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   Saving…

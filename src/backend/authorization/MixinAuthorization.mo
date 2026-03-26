@@ -1,16 +1,13 @@
 import AccessControl "./access-control";
 import Prim "mo:prim";
+import Runtime "mo:core/Runtime";
 
 mixin (accessControlState : AccessControl.AccessControlState) {
-  // Initialize auth (first caller with matching token becomes admin, others become users).
-  // If CAFFEINE_ADMIN_TOKEN is not set, all non-anonymous callers become regular users.
+  // Initialize auth (first caller becomes admin, others become users)
   public shared ({ caller }) func _initializeAccessControlWithSecret(userSecret : Text) : async () {
     switch (Prim.envVar<system>("CAFFEINE_ADMIN_TOKEN")) {
       case (null) {
-        // Env var not set — register caller as user so app remains functional
-        if (not caller.isAnonymous()) {
-          AccessControl.ensureRegistered(accessControlState, caller);
-        };
+        Runtime.trap("CAFFEINE_ADMIN_TOKEN environment variable is not set");
       };
       case (?adminToken) {
         AccessControl.initialize(accessControlState, caller, adminToken, userSecret);

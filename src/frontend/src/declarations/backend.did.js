@@ -201,6 +201,7 @@ export const idlService = IDL.Service({
   'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
   'markMessageAsRead' : IDL.Func([MessageId], [], []),
   'registerVehicle' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [VehicleId], []),
+  'registerObject' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text], [VehicleId], []),
   'requestSticker' : IDL.Func([StickerRequestInput], [StickerRequestId], []),
   'revokePrintableQRCode' : IDL.Func([PrintableQRCodeId], [], []),
   'saveCallerUserProfile' : IDL.Func([IDL.Text, IDL.Text], [], []),
@@ -434,6 +435,11 @@ export const idlFactory = ({ IDL }) => {
     'markMessageAsRead' : IDL.Func([MessageId], [], []),
     'registerVehicle' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text],
+        [VehicleId],
+        [],
+      ),
+    'registerObject' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
         [VehicleId],
         [],
       ),

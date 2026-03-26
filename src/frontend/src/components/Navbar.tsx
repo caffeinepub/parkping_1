@@ -47,7 +47,7 @@ export default function Navbar({ transparent = false }: NavbarProps) {
           <img
             src="/assets/generated/scanlink-logo-transparent.dim_120x120.png"
             alt="ScanLink logo"
-            className="h-10 w-auto"
+            className="h-14 w-auto"
           />
           <span className="font-bold text-xl text-navy">ScanLink</span>
         </Link>

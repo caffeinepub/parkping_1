@@ -117,7 +117,7 @@ export default function LandingPage() {
                 <span className="text-primary">Digital Identity.</span>
               </h1>
               <p className="text-lg text-muted-foreground leading-relaxed mb-4 max-w-lg">
-                Scan an QR → message the owner instantly. No app. No phone
+                Scan any QR code → message the owner instantly. No app. No phone
                 number. No friction.
               </p>
               <p className="text-base text-muted-foreground leading-relaxed mb-8 max-w-lg">

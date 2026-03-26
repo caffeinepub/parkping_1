@@ -164,6 +164,7 @@ export interface _SERVICE {
   'isStripeConfigured' : ActorMethod<[], boolean>,
   'markMessageAsRead' : ActorMethod<[MessageId], undefined>,
   'registerVehicle' : ActorMethod<[string, string, string], VehicleId>,
+  'registerObject' : ActorMethod<[string, string, string, string], VehicleId>,
   'requestSticker' : ActorMethod<[StickerRequestInput], StickerRequestId>,
   'revokePrintableQRCode' : ActorMethod<[PrintableQRCodeId], undefined>,
   'saveCallerUserProfile' : ActorMethod<[string, string], undefined>,

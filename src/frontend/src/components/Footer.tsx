@@ -8,11 +8,16 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-3 mb-4">
+              <img
+                src="/assets/generated/scanlink-logo-transparent.dim_120x120.png"
+                alt="ScanLink"
+                className="h-12 w-auto brightness-0 invert"
+              />
               <span className="font-bold text-xl">ScanLink</span>
             </div>
             <p className="text-sm text-white/60 max-w-xs leading-relaxed">
-              Give anything a Digital Identity. Scan an QR code → instantly
+              Give anything a Digital Identity. Scan any QR code → instantly
               message the owner. Works for vehicles, bikes, pets, luggage, and
               more.
             </p>

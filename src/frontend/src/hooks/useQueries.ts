@@ -196,6 +196,19 @@ export function useDeleteMessage() {
   });
 }
 
+export function useDeleteVehicle() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vehicleId: bigint) => {
+      if (!actor) throw new Error("Not authenticated");
+      await actor.deleteVehicle(vehicleId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["myVehicles"] });
+    },
+  });
+}
 export function useIsCallerAdmin() {
   const { actor, isFetching } = useActor();
   return useQuery<boolean>({

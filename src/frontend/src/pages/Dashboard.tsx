@@ -6,6 +6,17 @@ import PrintQRButton from "@/components/PrintQRButton";
 import ProfileSetup from "@/components/ProfileSetup";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
 import RequestStickerDialog from "@/components/RequestStickerDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +38,7 @@ import {
   MessageSquare,
   PawPrint,
   Tag,
+  Trash2,
   User,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -36,6 +48,7 @@ import type { UserProfileFull, Vehicle } from "../backend.d";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import {
+  useDeleteVehicle,
   useGetCallerUserProfile,
   useGetMyVehicles,
   useGetUnreadMessages,
@@ -370,6 +383,7 @@ export default function Dashboard() {
   const { data: vehicles, isLoading: vehiclesLoading } = useGetMyVehicles();
   const { data: unreadMessages = [] } = useGetUnreadMessages();
   const { data: categoryMap } = useGetVehicleCategories();
+  const deleteVehicle = useDeleteVehicle();
   const {
     isLoading: profileLoading,
     isFetched: profileFetched,
@@ -549,6 +563,9 @@ export default function Dashboard() {
                             size={120}
                             label="Scan to message owner"
                           />
+                          <p className="text-xs text-muted-foreground text-center mt-1">
+                            Dynamic — updates automatically
+                          </p>
                         </div>
                         <Link
                           to="/dashboard/vehicle/$id"
@@ -586,6 +603,47 @@ export default function Dashboard() {
                           vehicles={vehicles as Vehicle[]}
                           defaultVehicleId={vehicle.id}
                         />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:bg-destructive/10 px-2"
+                              data-ocid={`dashboard.delete_button.${idx + 1}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent data-ocid="dashboard.dialog">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Delete Digital Identity?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This Digital Identity will be permanently
+                                deleted and your QR code will stop working. You
+                                will need to create a new Digital ID and
+                                generate a new QR code if needed. This action
+                                cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel data-ocid="dashboard.cancel_button">
+                                Keep It
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                data-ocid="dashboard.confirm_button"
+                                onClick={async () => {
+                                  await deleteVehicle.mutateAsync(vehicle.id);
+                                  toast.success("Digital Identity deleted.");
+                                }}
+                              >
+                                Delete Permanently
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
 
                       <AssignedQRSection vehicleId={vehicle.id} />

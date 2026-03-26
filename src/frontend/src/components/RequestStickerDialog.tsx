@@ -14,10 +14,7 @@ import { AlertCircle, Info, Package } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { UserProfileFull as UserProfile } from "../backend.d";
-import {
-  useGetMyStickerRequests,
-  useRequestSticker,
-} from "../hooks/useQueries";
+import { useRequestSticker } from "../hooks/useQueries";
 
 interface RequestStickerDialogProps {
   vehicleId: bigint;
@@ -44,13 +41,6 @@ export default function RequestStickerDialog({
   });
 
   const { mutateAsync: requestSticker, isPending } = useRequestSticker();
-  const { data: myStickerRequests = [] } = useGetMyStickerRequests();
-
-  // Count requests for this specific vehicle
-  const vehicleRequestCount = myStickerRequests.filter(
-    (r) => r.vehicleId === vehicleId,
-  ).length;
-  const isFree = vehicleRequestCount === 0;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -78,9 +68,7 @@ export default function RequestStickerDialog({
         country: form.country.trim(),
       });
       toast.success(
-        isFree
-          ? "Your free weatherproof sticker will be mailed to your address!"
-          : "Your sticker request has been submitted. You will be invoiced $9.99 + shipping.",
+        "Your sticker request has been submitted. You will be invoiced $19.99 + shipping.",
       );
       setOpen(false);
       setForm({
@@ -119,39 +107,34 @@ export default function RequestStickerDialog({
             Request Weatherproof Sticker
           </DialogTitle>
           <DialogDescription>
-            We'll mail a weatherproof QR sticker for{" "}
+            We&apos;ll mail a weatherproof QR sticker for{" "}
             <span className="font-semibold text-foreground">{vehicleName}</span>{" "}
             to your address.
           </DialogDescription>
         </DialogHeader>
 
         {/* Pricing notice */}
-        <div
-          className={`flex items-start gap-2 rounded-lg px-4 py-3 text-sm ${
-            isFree
-              ? "bg-green-50 border border-green-200 text-green-800"
-              : "bg-amber-50 border border-amber-200 text-amber-800"
-          }`}
-        >
-          {isFree ? (
-            <Info className="w-4 h-4 mt-0.5 shrink-0 text-green-600" />
-          ) : (
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
-          )}
+        <div className="flex items-start gap-2 rounded-lg px-4 py-3 text-sm bg-amber-50 border border-amber-200 text-amber-800">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
           <div>
-            {isFree ? (
-              <span>
-                <span className="font-semibold">First sticker is free</span> and
-                included with your subscription.
-              </span>
-            ) : (
-              <span>
-                <span className="font-semibold">Replacement sticker:</span>{" "}
-                $9.99 per sticker + shipping and applicable taxes. You have
-                already requested {vehicleRequestCount} sticker
-                {vehicleRequestCount > 1 ? "s" : ""} for this vehicle.
-              </span>
-            )}
+            <span>
+              <span className="font-semibold">
+                Physical stickers cost $19.99
+              </span>{" "}
+              per sticker + shipping and applicable taxes.
+            </span>
+          </div>
+        </div>
+
+        {/* Free print tip */}
+        <div className="flex items-start gap-2 rounded-lg px-4 py-3 text-sm bg-green-50 border border-green-200 text-green-800">
+          <Info className="w-4 h-4 mt-0.5 shrink-0 text-green-600" />
+          <div>
+            <span>
+              <span className="font-semibold">Tip:</span> You can always print
+              your own QR code for free using the{" "}
+              <span className="font-semibold">Print QR</span> button.
+            </span>
           </div>
         </div>
 
@@ -262,9 +245,7 @@ export default function RequestStickerDialog({
             >
               {isPending
                 ? "Submitting…"
-                : isFree
-                  ? "Request Free Sticker"
-                  : "Request Sticker ($9.99 + shipping)"}
+                : "Request Sticker ($19.99 + shipping)"}
             </Button>
           </DialogFooter>
         </form>

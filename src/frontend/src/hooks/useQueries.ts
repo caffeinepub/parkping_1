@@ -258,7 +258,7 @@ export function useGetAdminStats() {
     queryKey: ["adminStats"],
     queryFn: async () => {
       if (!actor) throw new Error("Actor not available");
-      return actor.getAdminStats();
+      return actor.getAdminStats() as unknown as AdminStats;
     },
     enabled: !!actor && !isFetching,
   });
@@ -483,5 +483,82 @@ export function useGetMessageLocation(messageId: bigint | null) {
       return result;
     },
     enabled: !!actor && !isFetching && messageId !== null,
+  });
+}
+
+// ---- Promo Codes ----
+
+export function useGeneratePromoCode() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      code,
+      discountPercent,
+      description,
+      maxUses,
+    }: {
+      code: string;
+      discountPercent: bigint;
+      description: string;
+      maxUses: bigint;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return (actor as any).generatePromoCode(
+        code,
+        discountPercent,
+        description,
+        maxUses,
+      );
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["promoCodes"] }),
+  });
+}
+
+export function useListPromoCodes() {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["promoCodes"],
+    queryFn: async () => {
+      if (!actor) throw new Error("Actor not available");
+      return (actor as any).listPromoCodes();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useDeactivatePromoCode() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not authenticated");
+      return (actor as any).deactivatePromoCode(id);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["promoCodes"] }),
+  });
+}
+
+export function useRedeemPromoCode() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (code: string) => {
+      if (!actor) throw new Error("Not authenticated");
+      return (actor as any).redeemPromoCode(code);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["mySubscription"] }),
+  });
+}
+
+export function useGetMySubscriptionInfo() {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["mySubscription"],
+    queryFn: async () => {
+      if (!actor) return null;
+      return (actor as any).getMySubscriptionInfo();
+    },
+    enabled: !!actor && !isFetching,
   });
 }

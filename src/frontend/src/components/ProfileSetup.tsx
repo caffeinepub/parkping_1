@@ -20,6 +20,7 @@ interface ProfileSetupProps {
 export default function ProfileSetup({ open }: ProfileSetupProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [promoCode, setPromoCode] = useState("");
   const [saving, setSaving] = useState(false);
   const { actor } = useActor();
   const qc = useQueryClient();
@@ -30,6 +31,21 @@ export default function ProfileSetup({ open }: ProfileSetupProps) {
     try {
       await actor.saveCallerUserProfile(name.trim(), email.trim());
       qc.invalidateQueries({ queryKey: ["currentUserProfile"] });
+
+      if (promoCode.trim()) {
+        try {
+          const msg = await (actor as any).redeemPromoCode(
+            promoCode.trim().toUpperCase(),
+          );
+          toast.success(msg || "Promo code applied!");
+          qc.invalidateQueries({ queryKey: ["mySubscription"] });
+        } catch {
+          toast.error(
+            "Promo code could not be applied. Please check the code and try again.",
+          );
+        }
+      }
+
       toast.success("Profile saved!");
     } catch {
       toast.error("Failed to save profile.");
@@ -73,6 +89,26 @@ export default function ProfileSetup({ open }: ProfileSetupProps) {
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
               data-ocid="profile_setup.input"
             />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="profile-promo">
+              Promo Code{" "}
+              <span className="text-muted-foreground font-normal text-xs">
+                (optional)
+              </span>
+            </Label>
+            <Input
+              id="profile-promo"
+              placeholder="Enter promo code"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              className="font-mono tracking-widest"
+              data-ocid="profile_setup.input"
+            />
+            <p className="text-xs text-muted-foreground">
+              Have a promo code? Enter it here for a free or discounted
+              subscription.
+            </p>
           </div>
           <Button
             onClick={handleSave}

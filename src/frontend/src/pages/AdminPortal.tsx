@@ -1,7 +1,6 @@
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import { printQRCode } from "@/components/PrintQRButton";
-import QRCodeDisplay from "@/components/QRCodeDisplay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,29 +31,29 @@ import {
   MessageSquare,
   Package,
   Printer,
-  QrCode,
   ShieldOff,
+  Tag,
   Users,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type {
   AdminStats,
-  PrintableQRCode,
+  PromoCode,
   StickerRequest,
   UserSummary,
   Vehicle,
 } from "../backend.d";
 import {
-  useGeneratePrintableQRCodes,
+  useDeactivatePromoCode,
+  useGeneratePromoCode,
   useGetAdminStats,
-  useGetAllPrintableQRCodes,
   useGetAllStickerRequests,
   useGetAllUsers,
   useGetAllVehicles,
   useIsCallerAdmin,
-  useRevokePrintableQRCode,
+  useListPromoCodes,
   useUpdateStickerStatus,
 } from "../hooks/useQueries";
 import {
@@ -201,147 +200,128 @@ function AdminPrintQRButton({
   vehicleMap: Map<string, Vehicle>;
 }) {
   const vehicle = vehicleMap.get(req.vehicleId.toString());
-
-  function handlePrint() {
-    printQRCode({
-      vehicleName: vehicle?.name ?? req.name,
-      licensePlate: vehicle?.licensePlate || undefined,
-      vehicleId: req.vehicleId.toString(),
-    });
-  }
-
   return (
     <Button
-      size="sm"
       variant="outline"
-      onClick={handlePrint}
-      data-ocid="admin.print_qr_button"
-      className="text-xs h-7 px-2 border-primary/30 text-primary hover:bg-teal-light"
+      size="sm"
+      onClick={() => {
+        if (vehicle) {
+          printQRCode({
+            vehicleId: req.vehicleId.toString(),
+            vehicleName: vehicle.name,
+            licensePlate: vehicle.licensePlate,
+          });
+        }
+      }}
+      className="border-primary/40 text-primary hover:bg-teal-light gap-1.5 text-xs"
+      data-ocid="admin.secondary_button"
     >
-      <Printer className="w-3 h-3 mr-1" />
+      <Printer className="w-3 h-3" />
       Print QR
     </Button>
   );
 }
 
-function RevokeQRButton({ code }: { code: PrintableQRCode }) {
-  const [confirm, setConfirm] = useState(false);
-  const { mutateAsync, isPending } = useRevokePrintableQRCode();
+function printPromoCard(code: PromoCode) {
+  const discount = Number(code.discountPercent);
+  const discountLabel =
+    discount === 100
+      ? "100% OFF — 1 Year Free Subscription"
+      : `${discount}% OFF Subscription`;
+  const win = window.open("", "_blank");
+  if (!win) return;
+  win.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Promo Code — ${code.code}</title>
+        <style>
+          @page { size: 3.5in 2in; margin: 0; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { width: 3.5in; height: 2in; display: flex; align-items: center; justify-content: center; font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; }
+          .card { width: 3.5in; height: 2in; padding: 14px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 2px solid #2AAEA7; border-radius: 8px; text-align: center; background: #fff; }
+          .logo { height: 28px; object-fit: contain; }
+          .code { font-size: 22px; font-weight: 900; letter-spacing: 3px; color: #1a2540; font-family: 'Courier New', monospace; background: #e8f8f7; padding: 4px 12px; border-radius: 4px; }
+          .discount { font-size: 11px; font-weight: 700; color: #2AAEA7; text-transform: uppercase; letter-spacing: 0.5px; }
+          .desc { font-size: 10px; color: #666; }
+          .url { font-size: 9px; color: #1a2540; font-weight: 600; margin-top: 2px; }
+          @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <img src="/assets/image-019d21e8-c67a-74dd-a137-fcd8265741f1.png" class="logo" alt="ScanLink" />
+          <div class="code">${code.code}</div>
+          <div class="discount">${discountLabel}</div>
+          <div class="desc">${code.description || ""}</div>
+          <div class="url">www.scanlink.app</div>
+        </div>
+      </body>
+    </html>
+  `);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 400);
+}
 
-  async function handleRevoke() {
-    try {
-      await mutateAsync(code.id);
-      toast.success(`QR code ${code.uniqueIdentifier} revoked.`);
-      setConfirm(false);
-    } catch {
-      toast.error("Failed to revoke QR code.");
-    }
-  }
-
-  if (confirm) {
-    return (
-      <div className="flex items-center gap-1">
-        <Button
-          size="sm"
-          variant="destructive"
-          onClick={handleRevoke}
-          disabled={isPending}
-          className="text-xs h-7 px-2"
-          data-ocid="admin.confirm_button"
-        >
-          {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Confirm"}
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setConfirm(false)}
-          className="text-xs h-7 px-2"
-          data-ocid="admin.cancel_button"
-        >
-          Cancel
-        </Button>
-      </div>
-    );
-  }
-
+function DeactivatePromoButton({ code }: { code: PromoCode }) {
+  const { mutateAsync, isPending } = useDeactivatePromoCode();
   return (
     <Button
+      variant="destructive"
       size="sm"
-      variant="outline"
-      onClick={() => setConfirm(true)}
-      className="text-xs h-7 px-2 border-red-200 text-destructive hover:bg-red-50"
+      disabled={isPending || !code.isActive}
+      onClick={async () => {
+        try {
+          await mutateAsync(code.id);
+          toast.success(`Promo code ${code.code} deactivated.`);
+        } catch {
+          toast.error("Failed to deactivate promo code.");
+        }
+      }}
       data-ocid="admin.delete_button"
     >
-      Revoke
+      {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Deactivate"}
     </Button>
   );
 }
 
-function AdminQRCodesTab() {
-  const [quantity, setQuantity] = useState(10);
-  const [prefix, setPrefix] = useState("QR");
-  const [generatedCodes, setGeneratedCodes] = useState<PrintableQRCode[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const printRef = useRef<HTMLDivElement>(null);
-
+function AdminPromoCodesTab() {
+  const [codeStr, setCodeStr] = useState("");
+  const [discountPct, setDiscountPct] = useState(100);
+  const [description, setDescription] = useState("1 year free subscription");
+  const [maxUses, setMaxUses] = useState(1);
   const { mutateAsync: generate, isPending: generating } =
-    useGeneratePrintableQRCodes();
-  const { data: allCodes, isLoading: codesLoading } =
-    useGetAllPrintableQRCodes();
+    useGeneratePromoCode();
+  const { data: promoCodes, isLoading: codesLoading } = useListPromoCodes();
+
+  function generateRandomCode() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let result = "";
+    for (let i = 0; i < 8; i++)
+      result += chars[Math.floor(Math.random() * chars.length)];
+    setCodeStr(result);
+  }
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
+    if (!codeStr.trim()) return;
     try {
-      const codes = await generate({
-        quantity: BigInt(quantity),
-        prefix: prefix.toUpperCase().trim() || "QR",
+      await generate({
+        code: codeStr.trim().toUpperCase(),
+        discountPercent: BigInt(discountPct),
+        description: description.trim(),
+        maxUses: BigInt(maxUses),
       });
-      setGeneratedCodes(codes as PrintableQRCode[]);
-      toast.success(`Generated ${codes.length} QR codes!`);
+      toast.success(`Promo code "${codeStr.trim().toUpperCase()}" created!`);
+      setCodeStr("");
     } catch {
-      toast.error("Failed to generate QR codes.");
+      toast.error("Failed to generate promo code.");
     }
   }
 
-  function handlePrintAll() {
-    if (!printRef.current) return;
-    const printContents = printRef.current.innerHTML;
-    const win = window.open("", "_blank");
-    if (!win) return;
-    win.document.write(`
-      <html>
-        <head>
-          <title>ScanLink QR Codes</title>
-          <style>
-            body { margin: 0; padding: 20px; font-family: monospace; }
-            .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-            .qr-card { display: flex; flex-direction: column; align-items: center; padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; page-break-inside: avoid; }
-            .qr-card img, .qr-card canvas, .qr-card svg { width: 120px; height: 120px; }
-            .identifier { font-size: 12px; font-weight: bold; margin-top: 8px; letter-spacing: 1px; }
-            @media print { body { padding: 0; } }
-          </style>
-        </head>
-        <body>${printContents}</body>
-      </html>
-    `);
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 500);
-  }
-
-  const filteredCodes = useMemo(() => {
-    if (!allCodes) return [];
-    if (statusFilter === "all") return allCodes as PrintableQRCode[];
-    return (allCodes as PrintableQRCode[]).filter(
-      (c) => c.status === statusFilter,
-    );
-  }, [allCodes, statusFilter]);
-
-  const statusFilters = ["all", "generated", "assigned", "revoked"];
-
   return (
     <div className="space-y-6">
-      {/* Generate Card */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -350,162 +330,124 @@ function AdminQRCodesTab() {
         <Card className="border-border shadow-card">
           <CardHeader className="flex flex-row items-center gap-3">
             <div className="w-9 h-9 bg-teal-light rounded-xl flex items-center justify-center">
-              <QrCode className="w-5 h-5 text-primary" />
+              <Tag className="w-5 h-5 text-primary" />
             </div>
-            <CardTitle className="text-navy">Generate QR Codes</CardTitle>
+            <CardTitle className="text-navy">Generate Promo Code</CardTitle>
           </CardHeader>
           <CardContent>
-            <form
-              onSubmit={handleGenerate}
-              className="flex flex-col sm:flex-row gap-4 items-end"
-            >
-              <div className="space-y-1.5 flex-1">
-                <Label htmlFor="qr-quantity" className="text-navy font-medium">
-                  Quantity
-                </Label>
-                <Input
-                  id="qr-quantity"
-                  type="number"
-                  min={1}
-                  max={200}
-                  value={quantity}
-                  onChange={(e) =>
-                    setQuantity(
-                      Math.max(1, Math.min(200, Number(e.target.value))),
-                    )
-                  }
-                  className="w-full"
-                  data-ocid="admin.input"
-                />
-              </div>
-              <div className="space-y-1.5 flex-1">
-                <Label htmlFor="qr-prefix" className="text-navy font-medium">
-                  Prefix{" "}
-                  <span className="text-muted-foreground font-normal text-xs">
-                    (optional)
-                  </span>
-                </Label>
-                <Input
-                  id="qr-prefix"
-                  placeholder="QR"
-                  maxLength={8}
-                  value={prefix}
-                  onChange={(e) => setPrefix(e.target.value.toUpperCase())}
-                  className="font-mono"
-                  data-ocid="admin.input"
-                />
+            <form onSubmit={handleGenerate} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="promo-code" className="text-navy font-medium">
+                    Promo Code
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="promo-code"
+                      placeholder="e.g. WELCOME2024"
+                      value={codeStr}
+                      onChange={(e) => setCodeStr(e.target.value.toUpperCase())}
+                      className="font-mono font-bold tracking-widest"
+                      data-ocid="admin.input"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={generateRandomCode}
+                      className="shrink-0 border-primary/40 text-primary hover:bg-teal-light"
+                      data-ocid="admin.secondary_button"
+                    >
+                      Random
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="promo-discount"
+                    className="text-navy font-medium"
+                  >
+                    Discount %
+                  </Label>
+                  <Input
+                    id="promo-discount"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={discountPct}
+                    onChange={(e) =>
+                      setDiscountPct(
+                        Math.min(100, Math.max(1, Number(e.target.value))),
+                      )
+                    }
+                    data-ocid="admin.input"
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="promo-desc" className="text-navy font-medium">
+                    Description
+                  </Label>
+                  <Input
+                    id="promo-desc"
+                    placeholder="1 year free subscription"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    data-ocid="admin.input"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="promo-maxuses"
+                    className="text-navy font-medium"
+                  >
+                    Max Uses
+                  </Label>
+                  <Input
+                    id="promo-maxuses"
+                    type="number"
+                    min={1}
+                    value={maxUses}
+                    onChange={(e) =>
+                      setMaxUses(Math.max(1, Number(e.target.value)))
+                    }
+                    data-ocid="admin.input"
+                  />
+                </div>
               </div>
               <Button
                 type="submit"
-                disabled={generating}
-                className="bg-primary text-white hover:bg-primary/90 shrink-0"
+                disabled={generating || !codeStr.trim()}
+                className="bg-primary text-white hover:bg-primary/90"
                 data-ocid="admin.primary_button"
               >
                 {generating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
+                    Creating...
                   </>
                 ) : (
                   <>
-                    <QrCode className="mr-2 h-4 w-4" />
-                    Generate Codes
+                    <Tag className="mr-2 h-4 w-4" />
+                    Generate Code
                   </>
                 )}
               </Button>
             </form>
-
-            {/* Preview */}
-            {generatedCodes.length > 0 && (
-              <div className="mt-8">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-navy">
-                      Generated Codes Preview
-                    </h3>
-                    <Badge className="bg-teal-light text-primary border-primary/20">
-                      {generatedCodes.length} codes
-                    </Badge>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handlePrintAll}
-                    className="border-primary/40 text-primary hover:bg-teal-light gap-1.5"
-                    data-ocid="admin.secondary_button"
-                  >
-                    <Printer className="w-4 h-4" />
-                    Download / Print All
-                  </Button>
-                </div>
-
-                {/* Hidden print layout */}
-                <div ref={printRef} style={{ display: "none" }}>
-                  <div className="grid">
-                    {generatedCodes.map((code) => (
-                      <div key={code.id.toString()} className="qr-card">
-                        <QRCodeDisplay url={code.qrData} size={120} />
-                        <div className="identifier">
-                          {code.uniqueIdentifier}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Visible preview grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {generatedCodes.map((code) => (
-                    <motion.div
-                      key={code.id.toString()}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="flex flex-col items-center p-3 bg-muted/30 rounded-xl border border-border"
-                    >
-                      <QRCodeDisplay url={code.qrData} size={100} />
-                      <span className="font-mono text-xs font-bold text-navy mt-2 tracking-wider">
-                        {code.uniqueIdentifier}
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* All QR Codes Table */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
         <Card className="border-border shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-teal-light rounded-xl flex items-center justify-center">
-                <QrCode className="w-5 h-5 text-primary" />
-              </div>
-              <CardTitle className="text-navy">All QR Codes</CardTitle>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div className="w-9 h-9 bg-teal-light rounded-xl flex items-center justify-center">
+              <Tag className="w-5 h-5 text-primary" />
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {statusFilters.map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setStatusFilter(f)}
-                  data-ocid="admin.tab"
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize ${
-                    statusFilter === f
-                      ? "bg-primary text-white"
-                      : "bg-muted text-muted-foreground hover:bg-teal-light hover:text-primary"
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
+            <CardTitle className="text-navy">All Promo Codes</CardTitle>
           </CardHeader>
           <CardContent>
             {codesLoading ? (
@@ -514,69 +456,79 @@ function AdminQRCodesTab() {
                   <Skeleton key={i} className="h-12 w-full rounded-lg" />
                 ))}
               </div>
-            ) : filteredCodes.length === 0 ? (
+            ) : !promoCodes || promoCodes.length === 0 ? (
               <div
                 className="text-center py-12 text-muted-foreground"
                 data-ocid="admin.empty_state"
               >
-                No QR codes found
-                {statusFilter !== "all" ? ` with status "${statusFilter}"` : ""}
-                .
+                No promo codes generated yet.
               </div>
             ) : (
               <Table data-ocid="admin.table">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Identifier</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Discount</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Uses</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Assigned To</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCodes.map((code: PrintableQRCode, idx: number) => (
+                  {(promoCodes as PromoCode[]).map((code, idx) => (
                     <TableRow
                       key={code.id.toString()}
                       data-ocid={`admin.row.${idx + 1}`}
                     >
                       <TableCell>
-                        <span className="font-mono text-xs font-bold text-navy tracking-wider bg-muted px-2 py-1 rounded">
-                          {code.uniqueIdentifier}
+                        <span className="font-mono text-xs font-bold text-navy tracking-widest bg-muted px-2 py-1 rounded">
+                          {code.code}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="bg-teal-light text-primary border-primary/20">
+                          {Number(code.discountPercent)}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                        {code.description}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {Number(code.usedCount)} / {Number(code.maxUses)}
                       </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
                           className={
-                            code.status === "generated"
-                              ? "bg-amber-100 text-amber-700 border-amber-200"
-                              : code.status === "assigned"
-                                ? "bg-green-100 text-green-700 border-green-200"
-                                : "bg-muted text-muted-foreground"
+                            code.isActive
+                              ? "bg-green-100 text-green-700 border-green-200"
+                              : "bg-muted text-muted-foreground"
                           }
                         >
-                          {code.status}
+                          {code.isActive ? "Active" : "Inactive"}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {code.assignedVehicleId !== undefined ? (
-                          `Vehicle #${code.assignedVehicleId.toString()}`
-                        ) : (
-                          <span className="italic">Unassigned</span>
-                        )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatTime(code.createdAt)}
                       </TableCell>
                       <TableCell>
-                        {code.status !== "revoked" ? (
-                          <RevokeQRButton code={code} />
-                        ) : (
-                          <span className="text-xs text-muted-foreground italic">
-                            Revoked
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => printPromoCard(code)}
+                            className="border-primary/40 text-primary hover:bg-teal-light gap-1.5"
+                            data-ocid="admin.secondary_button"
+                          >
+                            <Printer className="w-3 h-3" />
+                            Print
+                          </Button>
+                          {code.isActive && (
+                            <DeactivatePromoButton code={code} />
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -814,9 +766,9 @@ export default function AdminPortal() {
               delay={0.18}
             />
             <StatCard
-              title="Printable QR Codes"
-              value={(stats as AdminStats | undefined)?.totalPrintableQRCodes}
-              icon={QrCode}
+              title="Promo Codes"
+              value={(stats as AdminStats | undefined)?.totalPromoCodes}
+              icon={Tag}
               delay={0.24}
             />
           </div>
@@ -830,8 +782,8 @@ export default function AdminPortal() {
               <TabsTrigger value="stickers" data-ocid="admin.tab">
                 Sticker Requests
               </TabsTrigger>
-              <TabsTrigger value="qrcodes" data-ocid="admin.tab">
-                QR Codes
+              <TabsTrigger value="promocodes" data-ocid="admin.tab">
+                Promo Codes
               </TabsTrigger>
               <TabsTrigger value="stripe" data-ocid="admin.tab">
                 Stripe
@@ -1052,8 +1004,8 @@ export default function AdminPortal() {
               </motion.div>
             </TabsContent>
 
-            <TabsContent value="qrcodes">
-              <AdminQRCodesTab />
+            <TabsContent value="promocodes">
+              <AdminPromoCodesTab />
             </TabsContent>
 
             <TabsContent value="stripe">

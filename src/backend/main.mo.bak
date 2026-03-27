@@ -31,7 +31,6 @@ actor {
   type MessageId = Nat;
   type StickerRequestId = Nat;
   type PrintableQRCodeId = Nat;
-  type PromoCodeId = Nat;
 
   type UserProfile = {
     name : Text;
@@ -132,31 +131,12 @@ actor {
     country : Text;
   };
 
-  type PromoCode = {
-    id : PromoCodeId;
-    code : Text;
-    discountPercent : Nat;
-    description : Text;
-    maxUses : Nat;
-    usedCount : Nat;
-    createdBy : Principal;
-    createdAt : Time.Time;
-    isActive : Bool;
-  };
-
-  type UserSubscription = {
-    promoCodeUsed : ?Text;
-    discountPercent : ?Nat;
-    subscribedUntil : ?Int;
-  };
-
   type AdminStats = {
     totalUsers : Nat;
     totalVehicles : Nat;
     totalMessages : Nat;
     totalStickerRequests : Nat;
     totalPrintableQRCodes : Nat;
-    totalPromoCodes : Nat;
   };
 
   type UserSummary = {
@@ -205,18 +185,11 @@ actor {
     };
   };
 
-  module PromoCode {
-    public func compare(p1 : PromoCode, p2 : PromoCode) : Order.Order {
-      Nat.compare(p1.id, p2.id);
-    };
-  };
-
   // Counters and config
   stable var nextVehicleId : Nat = 0;
   stable var nextMessageId : Nat = 0;
   stable var nextStickerRequestId : Nat = 0;
   stable var nextPrintableQRCodeId : Nat = 0;
-  stable var nextPromoCodeId : Nat = 0;
   stable var stripeSecretKey : Text = "";
   stable var stripeAllowedCountries : [Text] = ["US", "CA", "GB", "AU"];
 
@@ -230,8 +203,6 @@ actor {
   stable var vehicleCategoriesEntries : [(VehicleId, Text)] = [];
   stable var vehicleContactInfoEntries : [(VehicleId, VehicleContactInfo)] = [];
   stable var messageLocationsEntries : [(MessageId, MessageLocation)] = [];
-  stable var promoCodesEntries : [(PromoCodeId, PromoCode)] = [];
-  stable var userSubscriptionsEntries : [(Principal, UserSubscription)] = [];
 
   // In-memory maps
   let vehicles = Map.fromArray<VehicleId, Vehicle>(vehiclesEntries);
@@ -243,8 +214,6 @@ actor {
   let vehicleCategories = Map.fromArray<VehicleId, Text>(vehicleCategoriesEntries);
   let vehicleContactInfoMap = Map.fromArray<VehicleId, VehicleContactInfo>(vehicleContactInfoEntries);
   let messageLocationsMap = Map.fromArray<MessageId, MessageLocation>(messageLocationsEntries);
-  let promoCodes = Map.fromArray<PromoCodeId, PromoCode>(promoCodesEntries);
-  let userSubscriptions = Map.fromArray<Principal, UserSubscription>(userSubscriptionsEntries);
 
   // HTTP transform for Stripe outcalls
   public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
@@ -608,7 +577,6 @@ actor {
       totalMessages = messages.size();
       totalStickerRequests = stickerRequests.size();
       totalPrintableQRCodes = printableQRCodes.size();
-      totalPromoCodes = promoCodes.size();
     };
   };
 
@@ -769,111 +737,6 @@ actor {
     stickerRequests.values().toArray().filter(func(sr) { sr.owner == caller }).sort();
   };
 
-  // ===== PROMO CODES =====
-
-  // Generate a promo code - admin only
-  public shared ({ caller }) func generatePromoCode(code : Text, discountPercent : Nat, description : Text, maxUses : Nat) : async PromoCode {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admin can generate promo codes");
-    };
-    if (discountPercent > 100) {
-      Runtime.trap("Discount percent must be between 0 and 100");
-    };
-    if (maxUses == 0) {
-      Runtime.trap("Max uses must be at least 1");
-    };
-    // Check for duplicate code
-    let existing = promoCodes.values().toArray().find(func(p : PromoCode) : Bool { p.code == code });
-    switch (existing) {
-      case (?_) { Runtime.trap("A promo code with this code already exists") };
-      case (null) {};
-    };
-    let id = nextPromoCodeId;
-    let promoCode : PromoCode = {
-      id;
-      code;
-      discountPercent;
-      description;
-      maxUses;
-      usedCount = 0;
-      createdBy = caller;
-      createdAt = Time.now();
-      isActive = true;
-    };
-    promoCodes.add(id, promoCode);
-    nextPromoCodeId += 1;
-    promoCode;
-  };
-
-  // List all promo codes - admin only
-  public query ({ caller }) func listPromoCodes() : async [PromoCode] {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admin can list promo codes");
-    };
-    promoCodes.values().toArray().sort();
-  };
-
-  // Deactivate a promo code - admin only
-  public shared ({ caller }) func deactivatePromoCode(id : PromoCodeId) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admin can deactivate promo codes");
-    };
-    switch (promoCodes.get(id)) {
-      case (null) { Runtime.trap("Promo code not found") };
-      case (?pc) {
-        promoCodes.add(id, {
-          id = pc.id; code = pc.code; discountPercent = pc.discountPercent;
-          description = pc.description; maxUses = pc.maxUses; usedCount = pc.usedCount;
-          createdBy = pc.createdBy; createdAt = pc.createdAt; isActive = false;
-        });
-      };
-    };
-  };
-
-  // Redeem a promo code - user
-  public shared ({ caller }) func redeemPromoCode(code : Text) : async Text {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Must be logged in to redeem a promo code");
-    };
-    // Check if user already has a subscription
-    switch (userSubscriptions.get(caller)) {
-      case (?_) { Runtime.trap("You have already used a promo code") };
-      case (null) {};
-    };
-    // Find the promo code
-    let promoCode = promoCodes.values().toArray().find(func(p : PromoCode) : Bool { p.code == code and p.isActive });
-    switch (promoCode) {
-      case (null) { Runtime.trap("Invalid or expired promo code") };
-      case (?pc) {
-        if (pc.usedCount >= pc.maxUses) {
-          Runtime.trap("This promo code has reached its maximum uses");
-        };
-        // Record subscription for user
-        let oneYearNs : Int = 365 * 24 * 60 * 60 * 1_000_000_000;
-        let subscribedUntil : Int = Time.now() + oneYearNs;
-        userSubscriptions.add(caller, {
-          promoCodeUsed = ?pc.code;
-          discountPercent = ?pc.discountPercent;
-          subscribedUntil = ?subscribedUntil;
-        });
-        // Increment usage count
-        promoCodes.add(pc.id, {
-          id = pc.id; code = pc.code; discountPercent = pc.discountPercent;
-          description = pc.description; maxUses = pc.maxUses; usedCount = pc.usedCount + 1;
-          createdBy = pc.createdBy; createdAt = pc.createdAt; isActive = pc.isActive;
-        });
-        "Promo code applied! You have a " # pc.discountPercent.toText() # "% discount subscription for 1 year.";
-      };
-    };
-  };
-
-  // Get subscription info for caller
-  public query ({ caller }) func getMySubscriptionInfo() : async ?UserSubscription {
-    userSubscriptions.get(caller);
-  };
-
-  // ===== PRINTABLE QR CODES =====
-
   // QR code batch generation
   public shared ({ caller }) func generatePrintableQRCodes(quantity : Nat, prefix : Text) : async [PrintableQRCode] {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
@@ -1030,8 +893,6 @@ actor {
     vehicleCategoriesEntries := vehicleCategories.toArray();
     vehicleContactInfoEntries := vehicleContactInfoMap.toArray();
     messageLocationsEntries := messageLocationsMap.toArray();
-    promoCodesEntries := promoCodes.toArray();
-    userSubscriptionsEntries := userSubscriptions.toArray();
     authAdminAssigned := accessControlState.adminAssigned;
     authUserRolesEntries := accessControlState.userRoles.toArray();
   };

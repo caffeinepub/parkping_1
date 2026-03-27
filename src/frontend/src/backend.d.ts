@@ -116,6 +116,23 @@ export interface StripeConfiguration {
     secretKey: string;
 }
 export type PrintableQRCodeId = bigint;
+export type PromoCodeId = bigint;
+export interface PromoCode {
+    id: PromoCodeId;
+    code: string;
+    discountPercent: bigint;
+    description: string;
+    maxUses: bigint;
+    usedCount: bigint;
+    createdBy: Principal;
+    createdAt: Time;
+    isActive: boolean;
+}
+export interface UserSubscription {
+    promoCodeUsed?: string;
+    discountPercent?: bigint;
+    subscribedUntil?: bigint;
+}
 export interface UserProfileFull {
     postcode?: string;
     country?: string;
@@ -133,6 +150,7 @@ export interface AdminStats {
     totalPrintableQRCodes: bigint;
     totalMessages: bigint;
     totalUsers: bigint;
+    totalPromoCodes: bigint;
 }
 export interface VehicleContactInfo {
     contactName: [] | [string];
@@ -163,6 +181,11 @@ export interface backendInterface {
     deleteVehicle(vehicleId: VehicleId): Promise<void>;
     updateObject(vehicleId: VehicleId, name: string, description: string, identifier: string, category: string): Promise<void>;
     generatePrintableQRCodes(quantity: bigint, prefix: string): Promise<Array<PrintableQRCode>>;
+    generatePromoCode(code: string, discountPercent: bigint, description: string, maxUses: bigint): Promise<PromoCode>;
+    listPromoCodes(): Promise<Array<PromoCode>>;
+    deactivatePromoCode(id: PromoCodeId): Promise<void>;
+    redeemPromoCode(code: string): Promise<string>;
+    getMySubscriptionInfo(): Promise<UserSubscription | null>;
     getAdminStats(): Promise<AdminStats>;
     getAllMessagesForVehicle(vehicleId: VehicleId): Promise<Array<Message>>;
     getAllPrintableQRCodes(): Promise<Array<PrintableQRCode>>;

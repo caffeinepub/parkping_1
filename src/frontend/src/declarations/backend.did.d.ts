@@ -16,6 +16,7 @@ export interface AdminStats {
   'totalPrintableQRCodes' : bigint,
   'totalMessages' : bigint,
   'totalUsers' : bigint,
+  'totalPromoCodes' : bigint,
 }
 export interface Message {
   'id' : MessageId,
@@ -55,6 +56,18 @@ export interface PrintableQRCode {
   'qrData' : string,
 }
 export type PrintableQRCodeId = bigint;
+export interface PromoCode {
+  'id' : PromoCodeId,
+  'code' : string,
+  'discountPercent' : bigint,
+  'description' : string,
+  'maxUses' : bigint,
+  'usedCount' : bigint,
+  'isActive' : boolean,
+  'createdAt' : Time,
+  'usedBy' : Array<Principal>,
+}
+export type PromoCodeId = bigint;
 export interface ShoppingItem {
   'productName' : string,
   'currency' : string,
@@ -153,12 +166,14 @@ export interface _SERVICE {
     [Array<ShoppingItem>, string, string],
     string
   >,
+  'deactivatePromoCode' : ActorMethod<[PromoCodeId], undefined>,
   'deleteMessage' : ActorMethod<[MessageId], undefined>,
   'deleteVehicle' : ActorMethod<[VehicleId], undefined>,
   'generatePrintableQRCodes' : ActorMethod<
     [bigint, string],
     Array<PrintableQRCode>
   >,
+  'generatePromoCode' : ActorMethod<[string, bigint, string, bigint], PromoCode>,
   'getAdminStats' : ActorMethod<[], AdminStats>,
   'getAllMessagesForVehicle' : ActorMethod<[VehicleId], Array<Message>>,
   'getAllPrintableQRCodes' : ActorMethod<[], Array<PrintableQRCode>>,
@@ -182,7 +197,9 @@ export interface _SERVICE {
   'getVehicle' : ActorMethod<[VehicleId], [] | [Vehicle]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isStripeConfigured' : ActorMethod<[], boolean>,
+  'listPromoCodes' : ActorMethod<[], Array<PromoCode>>,
   'markMessageAsRead' : ActorMethod<[MessageId], undefined>,
+  'redeemPromoCode' : ActorMethod<[string], string>,
   'registerVehicle' : ActorMethod<[string, string, string], VehicleId>,
   'registerObject' : ActorMethod<[string, string, string, string], VehicleId>,
   'requestSticker' : ActorMethod<[StickerRequestInput], StickerRequestId>,
@@ -205,6 +222,7 @@ export interface _SERVICE {
     ],
     undefined
   >,
+  'updateObject' : ActorMethod<[VehicleId, string, string, string, string], undefined>,
   'updateStickerStatus' : ActorMethod<
     [StickerRequestId, string, [] | [string]],
     undefined

@@ -9,6 +9,7 @@
 import { IDL } from '@icp-sdk/core/candid';
 
 export const VehicleId = IDL.Nat;
+export const PromoCodeId = IDL.Nat;
 export const MessageRequest = IDL.Record({
   'message' : IDL.Text,
   'senderName' : IDL.Opt(IDL.Text),
@@ -45,12 +46,24 @@ export const PrintableQRCode = IDL.Record({
   'assignedVehicleId' : IDL.Opt(VehicleId),
   'qrData' : IDL.Text,
 });
+export const PromoCode = IDL.Record({
+  'id' : PromoCodeId,
+  'code' : IDL.Text,
+  'discountPercent' : IDL.Nat,
+  'description' : IDL.Text,
+  'maxUses' : IDL.Nat,
+  'usedCount' : IDL.Nat,
+  'isActive' : IDL.Bool,
+  'createdAt' : Time,
+  'usedBy' : IDL.Vec(IDL.Principal),
+});
 export const AdminStats = IDL.Record({
   'totalVehicles' : IDL.Nat,
   'totalStickerRequests' : IDL.Nat,
   'totalPrintableQRCodes' : IDL.Nat,
   'totalMessages' : IDL.Nat,
   'totalUsers' : IDL.Nat,
+  'totalPromoCodes' : IDL.Nat,
 });
 export const Message = IDL.Record({
   'id' : MessageId,
@@ -161,6 +174,7 @@ export const idlService = IDL.Service({
       [IDL.Text],
       [],
     ),
+  'deactivatePromoCode' : IDL.Func([PromoCodeId], [], []),
   'deleteMessage' : IDL.Func([MessageId], [], []),
   'deleteVehicle' : IDL.Func([VehicleId], [], []),
   'updateObject' : IDL.Func([VehicleId, IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
@@ -169,6 +183,7 @@ export const idlService = IDL.Service({
       [IDL.Vec(PrintableQRCode)],
       [],
     ),
+  'generatePromoCode' : IDL.Func([IDL.Text, IDL.Nat, IDL.Text, IDL.Nat], [PromoCode], []),
   'getAdminStats' : IDL.Func([], [AdminStats], ['query']),
   'getAllMessagesForVehicle' : IDL.Func(
       [VehicleId],
@@ -220,7 +235,9 @@ export const idlService = IDL.Service({
   'getVehicle' : IDL.Func([VehicleId], [IDL.Opt(Vehicle)], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
+  'listPromoCodes' : IDL.Func([], [IDL.Vec(PromoCode)], ['query']),
   'markMessageAsRead' : IDL.Func([MessageId], [], []),
+  'redeemPromoCode' : IDL.Func([IDL.Text], [IDL.Text], []),
   'registerVehicle' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [VehicleId], []),
   'registerObject' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text], [VehicleId], []),
   'requestSticker' : IDL.Func([StickerRequestInput], [StickerRequestId], []),
@@ -259,6 +276,7 @@ export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
   const VehicleId = IDL.Nat;
+  const PromoCodeId = IDL.Nat;
   const MessageRequest = IDL.Record({
     'message' : IDL.Text,
     'senderName' : IDL.Opt(IDL.Text),
@@ -295,12 +313,24 @@ export const idlFactory = ({ IDL }) => {
     'assignedVehicleId' : IDL.Opt(VehicleId),
     'qrData' : IDL.Text,
   });
+  const PromoCode = IDL.Record({
+    'id' : PromoCodeId,
+    'code' : IDL.Text,
+    'discountPercent' : IDL.Nat,
+    'description' : IDL.Text,
+    'maxUses' : IDL.Nat,
+    'usedCount' : IDL.Nat,
+    'isActive' : IDL.Bool,
+    'createdAt' : Time,
+    'usedBy' : IDL.Vec(IDL.Principal),
+  });
   const AdminStats = IDL.Record({
     'totalVehicles' : IDL.Nat,
     'totalStickerRequests' : IDL.Nat,
     'totalPrintableQRCodes' : IDL.Nat,
     'totalMessages' : IDL.Nat,
     'totalUsers' : IDL.Nat,
+    'totalPromoCodes' : IDL.Nat,
   });
   const Message = IDL.Record({
     'id' : MessageId,
@@ -408,14 +438,16 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Text],
         [],
       ),
+    'deactivatePromoCode' : IDL.Func([PromoCodeId], [], []),
     'deleteMessage' : IDL.Func([MessageId], [], []),
     'deleteVehicle' : IDL.Func([VehicleId], [], []),
-      'updateObject' : IDL.Func([VehicleId, IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
+    'updateObject' : IDL.Func([VehicleId, IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
     'generatePrintableQRCodes' : IDL.Func(
         [IDL.Nat, IDL.Text],
         [IDL.Vec(PrintableQRCode)],
         [],
       ),
+    'generatePromoCode' : IDL.Func([IDL.Text, IDL.Nat, IDL.Text, IDL.Nat], [PromoCode], []),
     'getAdminStats' : IDL.Func([], [AdminStats], ['query']),
     'getAllMessagesForVehicle' : IDL.Func(
         [VehicleId],
@@ -475,7 +507,9 @@ export const idlFactory = ({ IDL }) => {
     'getVehicle' : IDL.Func([VehicleId], [IDL.Opt(Vehicle)], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
+    'listPromoCodes' : IDL.Func([], [IDL.Vec(PromoCode)], ['query']),
     'markMessageAsRead' : IDL.Func([MessageId], [], []),
+    'redeemPromoCode' : IDL.Func([IDL.Text], [IDL.Text], []),
     'registerVehicle' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text],
         [VehicleId],

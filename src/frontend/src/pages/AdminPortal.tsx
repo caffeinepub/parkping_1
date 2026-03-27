@@ -291,6 +291,7 @@ function AdminPromoCodesTab() {
   const [discountPct, setDiscountPct] = useState(100);
   const [description, setDescription] = useState("1 year free subscription");
   const [maxUses, setMaxUses] = useState(1);
+  const [quantity, setQuantity] = useState(1);
   const { mutateAsync: generate, isPending: generating } =
     useGeneratePromoCode();
   const { data: promoCodes, isLoading: codesLoading } = useListPromoCodes();
@@ -305,18 +306,34 @@ function AdminPromoCodesTab() {
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
-    if (!codeStr.trim()) return;
     try {
-      await generate({
-        code: codeStr.trim().toUpperCase(),
-        discountPercent: BigInt(discountPct),
-        description: description.trim(),
-        maxUses: BigInt(maxUses),
-      });
-      toast.success(`Promo code "${codeStr.trim().toUpperCase()}" created!`);
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      const makeRandom = () => {
+        let r = "";
+        for (let i = 0; i < 8; i++)
+          r += chars[Math.floor(Math.random() * chars.length)];
+        return r;
+      };
+      const codes =
+        quantity === 1
+          ? [codeStr.trim().toUpperCase() || makeRandom()]
+          : Array.from({ length: quantity }, makeRandom);
+      for (const c of codes) {
+        await generate({
+          code: c,
+          discountPercent: BigInt(discountPct),
+          description: description.trim(),
+          maxUses: BigInt(maxUses),
+        });
+      }
+      toast.success(
+        quantity === 1
+          ? "Promo code created!"
+          : `${quantity} promo codes created!`,
+      );
       setCodeStr("");
     } catch {
-      toast.error("Failed to generate promo code.");
+      toast.error("Failed to generate promo code(s).");
     }
   }
 
@@ -344,7 +361,11 @@ function AdminPromoCodesTab() {
                   <div className="flex gap-2">
                     <Input
                       id="promo-code"
-                      placeholder="e.g. WELCOME2024"
+                      placeholder={
+                        quantity > 1
+                          ? "Leave blank for random codes"
+                          : "e.g. WELCOME2024"
+                      }
                       value={codeStr}
                       onChange={(e) => setCodeStr(e.target.value.toUpperCase())}
                       className="font-mono font-bold tracking-widest"
@@ -383,6 +404,24 @@ function AdminPromoCodesTab() {
                     data-ocid="admin.input"
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="promo-qty" className="text-navy font-medium">
+                    Quantity
+                  </Label>
+                  <Input
+                    id="promo-qty"
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={quantity}
+                    onChange={(e) =>
+                      setQuantity(
+                        Math.min(50, Math.max(1, Number(e.target.value))),
+                      )
+                    }
+                    data-ocid="admin.input"
+                  />
+                </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="promo-desc" className="text-navy font-medium">
                     Description
@@ -416,7 +455,7 @@ function AdminPromoCodesTab() {
               </div>
               <Button
                 type="submit"
-                disabled={generating || !codeStr.trim()}
+                disabled={generating || (quantity === 1 && !codeStr.trim())}
                 className="bg-primary text-white hover:bg-primary/90"
                 data-ocid="admin.primary_button"
               >
@@ -428,7 +467,7 @@ function AdminPromoCodesTab() {
                 ) : (
                   <>
                     <Tag className="mr-2 h-4 w-4" />
-                    Generate Code
+                    Generate {quantity > 1 ? `${quantity} Codes` : "Code"}
                   </>
                 )}
               </Button>
@@ -477,61 +516,63 @@ function AdminPromoCodesTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(promoCodes as PromoCode[]).map((code, idx) => (
-                    <TableRow
-                      key={code.id.toString()}
-                      data-ocid={`admin.row.${idx + 1}`}
-                    >
-                      <TableCell>
-                        <span className="font-mono text-xs font-bold text-navy tracking-widest bg-muted px-2 py-1 rounded">
-                          {code.code}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className="bg-teal-light text-primary border-primary/20">
-                          {Number(code.discountPercent)}%
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {code.description}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {Number(code.usedCount)} / {Number(code.maxUses)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            code.isActive
-                              ? "bg-green-100 text-green-700 border-green-200"
-                              : "bg-muted text-muted-foreground"
-                          }
-                        >
-                          {code.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatTime(code.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
+                  {[...(promoCodes as PromoCode[])]
+                    .sort((a, b) => Number(b.createdAt - a.createdAt))
+                    .map((code, idx) => (
+                      <TableRow
+                        key={code.id.toString()}
+                        data-ocid={`admin.row.${idx + 1}`}
+                      >
+                        <TableCell>
+                          <span className="font-mono text-xs font-bold text-navy tracking-widest bg-muted px-2 py-1 rounded">
+                            {code.code}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-teal-light text-primary border-primary/20">
+                            {Number(code.discountPercent)}%
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                          {code.description}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {Number(code.usedCount)} / {Number(code.maxUses)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
                             variant="outline"
-                            size="sm"
-                            onClick={() => printPromoCard(code)}
-                            className="border-primary/40 text-primary hover:bg-teal-light gap-1.5"
-                            data-ocid="admin.secondary_button"
+                            className={
+                              code.isActive
+                                ? "bg-green-100 text-green-700 border-green-200"
+                                : "bg-muted text-muted-foreground"
+                            }
                           >
-                            <Printer className="w-3 h-3" />
-                            Print
-                          </Button>
-                          {code.isActive && (
-                            <DeactivatePromoButton code={code} />
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            {code.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatTime(code.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => printPromoCard(code)}
+                              className="border-primary/40 text-primary hover:bg-teal-light gap-1.5"
+                              data-ocid="admin.secondary_button"
+                            >
+                              <Printer className="w-3 h-3" />
+                              Print
+                            </Button>
+                            {code.isActive && (
+                              <DeactivatePromoButton code={code} />
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </Table>
             )}
